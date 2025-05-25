@@ -4,6 +4,7 @@ import Dashboard from '../views/Dashboard.vue'
 import Layout from '../views/Layout.vue'
 import UserManagement from '../views/UserManagement.vue'
 import RoleManagement from '../views/RoleManagement.vue'
+import OrganizationManagement from '../views/OrganizationManagement.vue'
 import Profile from '../views/Profile.vue'
 
 const routes = [
@@ -48,6 +49,14 @@ const routes = [
           component: RoleManagement,
           meta: {
             title: '角色管理'
+          }
+        },
+        {
+          path: '/system/organization',
+          name: 'OrganizationManagement',
+          component: OrganizationManagement,
+          meta: {
+            title: '组织管理'
           }
         },
       {

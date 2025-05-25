@@ -3,16 +3,19 @@ package com.example.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.common.Result;
 import com.example.entity.Menu;
+import com.example.entity.Organization;
 import com.example.entity.Role;
 import com.example.entity.RoleMenu;
 import com.example.entity.User;
 import com.example.entity.UserRole;
 import com.example.mapper.MenuMapper;
+import com.example.mapper.OrganizationMapper;
 import com.example.mapper.RoleMapper;
 import com.example.mapper.RoleMenuMapper;
 import com.example.mapper.UserMapper;
 import com.example.mapper.UserRoleMapper;
 import com.example.vo.MenuVO;
+import com.example.vo.OrganizationVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.example.util.PasswordUtil;
 import org.springframework.web.bind.annotation.*;
@@ -41,6 +44,9 @@ public class AdminController {
     
     @Autowired
     private RoleMenuMapper roleMenuMapper;
+    
+    @Autowired
+    private OrganizationMapper organizationMapper;
     
     @Autowired
     private PasswordUtil passwordUtil;
@@ -405,6 +411,226 @@ public class AdminController {
                 List<MenuVO> children = buildMenuTree(menus, menu.getId());
                 menu.setChildren(children);
                 tree.add(menu);
+            }
+        }
+        
+        return tree;
+    }
+    
+    // ==================== 组织管理相关接口 ====================
+    
+    // 获取组织树
+    @GetMapping("/organizations")
+    public Result<List<OrganizationVO>> getOrganizationTree(
+            @RequestParam(required = false) String orgName,
+            @RequestParam(required = false) String orgCode,
+            @RequestParam(required = false) String orgType) {
+        try {
+            LambdaQueryWrapper<Organization> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(Organization::getStatus, 1);
+            
+            // 添加查询条件
+            if (orgName != null && !orgName.trim().isEmpty()) {
+                wrapper.like(Organization::getOrgName, orgName.trim());
+            }
+            if (orgCode != null && !orgCode.trim().isEmpty()) {
+                wrapper.like(Organization::getOrgCode, orgCode.trim());
+            }
+            if (orgType != null && !orgType.trim().isEmpty()) {
+                wrapper.eq(Organization::getOrgType, orgType.trim());
+            }
+            
+            wrapper.orderByAsc(Organization::getOrgLevel)
+                    .orderByAsc(Organization::getSort);
+            List<Organization> organizations = organizationMapper.selectList(wrapper);
+            
+            // 转换为VO并构建树形结构
+            List<OrganizationVO> organizationVOs = organizations.stream().map(org -> {
+                OrganizationVO orgVO = new OrganizationVO();
+                orgVO.setId(org.getId());
+                orgVO.setOrgName(org.getOrgName());
+                orgVO.setOrgCode(org.getOrgCode());
+                orgVO.setParentId(org.getParentId());
+                orgVO.setOrgType(org.getOrgType());
+                orgVO.setOrgLevel(org.getOrgLevel());
+                orgVO.setSort(org.getSort());
+                orgVO.setPhone(org.getPhone());
+                orgVO.setEmail(org.getEmail());
+                orgVO.setDescription(org.getDescription());
+                orgVO.setStatus(org.getStatus());
+                orgVO.setCreateTime(org.getCreateTime());
+                orgVO.setUpdateTime(org.getUpdateTime());
+                return orgVO;
+            }).collect(Collectors.toList());
+            
+            // 如果有查询条件，返回扁平列表；否则返回树形结构
+            if ((orgName != null && !orgName.trim().isEmpty()) || 
+                (orgCode != null && !orgCode.trim().isEmpty()) || 
+                (orgType != null && !orgType.trim().isEmpty())) {
+                return Result.success(organizationVOs);
+            } else {
+                List<OrganizationVO> orgTree = buildOrganizationTree(organizationVOs, 0L);
+                return Result.success(orgTree);
+            }
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    // 新增组织
+    @PostMapping("/organizations")
+    public Result<Void> addOrganization(@RequestBody Organization organization) {
+        try {
+            // 检查组织名称是否已存在
+            LambdaQueryWrapper<Organization> nameWrapper = new LambdaQueryWrapper<>();
+            nameWrapper.eq(Organization::getOrgName, organization.getOrgName());
+            Organization existNameOrg = organizationMapper.selectOne(nameWrapper);
+            if (existNameOrg != null) {
+                return Result.error("组织名称已存在");
+            }
+            
+            // 检查组织编码是否已存在
+            LambdaQueryWrapper<Organization> codeWrapper = new LambdaQueryWrapper<>();
+            codeWrapper.eq(Organization::getOrgCode, organization.getOrgCode());
+            Organization existCodeOrg = organizationMapper.selectOne(codeWrapper);
+            if (existCodeOrg != null) {
+                return Result.error("组织编码已存在");
+            }
+            
+            // 设置组织级别
+            if (organization.getParentId() == null || organization.getParentId() == 0) {
+                // 顶级组织（学院）
+                organization.setParentId(0L);
+                organization.setOrgLevel(1);
+                organization.setOrgType("COLLEGE");
+            } else {
+                // 根据父级组织确定级别和类型
+                Organization parentOrg = organizationMapper.selectById(organization.getParentId());
+                if (parentOrg == null) {
+                    return Result.error("父级组织不存在");
+                }
+                
+                if (parentOrg.getOrgLevel() == 1) {
+                    // 父级是学院，当前是专业
+                    organization.setOrgLevel(2);
+                    organization.setOrgType("MAJOR");
+                } else if (parentOrg.getOrgLevel() == 2) {
+                    // 父级是专业，当前是班级
+                    organization.setOrgLevel(3);
+                    organization.setOrgType("CLASS");
+                } else {
+                    return Result.error("不能在班级下继续创建组织");
+                }
+            }
+            
+            organization.setCreateTime(LocalDateTime.now());
+            organization.setUpdateTime(LocalDateTime.now());
+            organization.setStatus(1);
+            
+            organizationMapper.insert(organization);
+            return Result.success();
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    // 更新组织
+    @PutMapping("/organizations/{id}")
+    public Result<Void> updateOrganization(@PathVariable Long id, @RequestBody Organization organization) {
+        try {
+            // 检查组织是否存在
+            Organization existOrg = organizationMapper.selectById(id);
+            if (existOrg == null) {
+                return Result.error("组织不存在");
+            }
+            
+            // 检查组织名称是否被其他组织使用
+            LambdaQueryWrapper<Organization> nameWrapper = new LambdaQueryWrapper<>();
+            nameWrapper.eq(Organization::getOrgName, organization.getOrgName())
+                    .ne(Organization::getId, id);
+            Organization duplicateNameOrg = organizationMapper.selectOne(nameWrapper);
+            if (duplicateNameOrg != null) {
+                return Result.error("组织名称已被其他组织使用");
+            }
+            
+            // 检查组织编码是否被其他组织使用
+            LambdaQueryWrapper<Organization> codeWrapper = new LambdaQueryWrapper<>();
+            codeWrapper.eq(Organization::getOrgCode, organization.getOrgCode())
+                    .ne(Organization::getId, id);
+            Organization duplicateCodeOrg = organizationMapper.selectOne(codeWrapper);
+            if (duplicateCodeOrg != null) {
+                return Result.error("组织编码已被其他组织使用");
+            }
+            
+            // 更新组织信息
+            organization.setId(id);
+            organization.setUpdateTime(LocalDateTime.now());
+            organization.setCreateTime(existOrg.getCreateTime()); // 保持原创建时间
+            organization.setParentId(existOrg.getParentId()); // 不允许修改父级
+            organization.setOrgLevel(existOrg.getOrgLevel()); // 不允许修改级别
+            organization.setOrgType(existOrg.getOrgType()); // 不允许修改类型
+            
+            organizationMapper.updateById(organization);
+            return Result.success();
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    // 删除组织
+    @DeleteMapping("/organizations/{id}")
+    public Result<Void> deleteOrganization(@PathVariable Long id) {
+        try {
+            // 检查组织是否存在
+            Organization existOrg = organizationMapper.selectById(id);
+            if (existOrg == null) {
+                return Result.error("组织不存在");
+            }
+            
+            // 检查是否有子组织
+            LambdaQueryWrapper<Organization> childWrapper = new LambdaQueryWrapper<>();
+            childWrapper.eq(Organization::getParentId, id)
+                    .eq(Organization::getStatus, 1);
+            long childCount = organizationMapper.selectCount(childWrapper);
+            if (childCount > 0) {
+                return Result.error("该组织下还有子组织，无法删除");
+            }
+            
+            // 软删除：设置状态为0
+            existOrg.setStatus(0);
+            existOrg.setUpdateTime(LocalDateTime.now());
+            organizationMapper.updateById(existOrg);
+            
+            return Result.success();
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    // 获取单个组织信息
+    @GetMapping("/organizations/{id}")
+    public Result<Organization> getOrganizationById(@PathVariable Long id) {
+        try {
+            Organization organization = organizationMapper.selectById(id);
+            if (organization == null) {
+                return Result.error("组织不存在");
+            }
+            
+            return Result.success(organization);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    // 构建组织树
+    private List<OrganizationVO> buildOrganizationTree(List<OrganizationVO> organizations, Long parentId) {
+        List<OrganizationVO> tree = new ArrayList<>();
+        
+        for (OrganizationVO org : organizations) {
+            if (parentId.equals(org.getParentId())) {
+                List<OrganizationVO> children = buildOrganizationTree(organizations, org.getId());
+                org.setChildren(children);
+                tree.add(org);
             }
         }
         
