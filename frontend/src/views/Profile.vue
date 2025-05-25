@@ -56,6 +56,57 @@
           </div>
         </div>
       </el-card>
+
+      <!-- 组织信息卡片 -->
+      <el-card class="organization-info-card" v-if="userInfo && userInfo.organizations && userInfo.organizations.length > 0">
+        <template #header>
+          <div class="card-header">
+            <span>组织信息</span>
+          </div>
+        </template>
+        
+        <div class="organization-info">
+          <div 
+            v-for="(org, index) in userInfo.organizations" 
+            :key="org.id" 
+            class="org-item"
+            :class="{ 'org-divider': index > 0 }"
+          >
+            <div class="org-header">
+              <el-tag :type="getOrgType(org.orgType)" size="small">
+                {{ getOrgTypeName(org.orgType) }}
+              </el-tag>
+              <span class="org-name">{{ org.orgName }}</span>
+            </div>
+            
+            <div class="org-path" v-if="org.collegeName || org.majorName || org.className">
+              <div class="path-item" v-if="org.collegeName">
+                <span class="path-label">学院：</span>
+                <span class="path-value">{{ org.collegeName }}</span>
+              </div>
+              <div class="path-item" v-if="org.majorName">
+                <span class="path-label">专业：</span>
+                <span class="path-value">{{ org.majorName }}</span>
+              </div>
+              <div class="path-item" v-if="org.className">
+                <span class="path-label">班级：</span>
+                <span class="path-value">{{ org.className }}</span>
+              </div>
+            </div>
+            
+            <div class="org-details">
+              <div class="detail-item">
+                <span class="detail-label">组织编码：</span>
+                <span class="detail-value">{{ org.orgCode }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">组织层级：</span>
+                <span class="detail-value">第{{ org.orgLevel }}级</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </el-card>
     </div>
 
     <!-- 修改密码对话框 -->
@@ -106,10 +157,40 @@ export default {
       switch (role) {
         case '管理员':
           return 'danger'
-        case '用户':
+        case '学生':
           return 'primary'
+        case '教师':
+          return 'success'
         default:
           return 'info'
+      }
+    }
+
+    // 获取组织类型
+    const getOrgType = (orgType) => {
+      switch (orgType) {
+        case 'COLLEGE':
+          return 'danger'
+        case 'MAJOR':
+          return 'warning'
+        case 'CLASS':
+          return 'success'
+        default:
+          return 'info'
+      }
+    }
+
+    // 获取组织类型名称
+    const getOrgTypeName = (orgType) => {
+      switch (orgType) {
+        case 'COLLEGE':
+          return '学院'
+        case 'MAJOR':
+          return '专业'
+        case 'CLASS':
+          return '班级'
+        default:
+          return '未知'
       }
     }
 
@@ -157,6 +238,8 @@ export default {
       passwordForm,
       hasPermission,
       getRoleType,
+      getOrgType,
+      getOrgTypeName,
       handleChangePassword
     }
   }
@@ -197,6 +280,83 @@ export default {
 
 .user-info {
   padding: 10px 0;
+}
+
+.organization-info-card {
+  margin-bottom: 20px;
+}
+
+.organization-info {
+  padding: 10px 0;
+}
+
+.org-item {
+  padding: 15px 0;
+}
+
+.org-divider {
+  border-top: 1px solid #f0f0f0;
+}
+
+.org-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.org-name {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  margin-left: 10px;
+}
+
+.org-path {
+  margin-bottom: 10px;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.path-item {
+  display: flex;
+  margin-bottom: 5px;
+}
+
+.path-item:last-child {
+  margin-bottom: 0;
+}
+
+.path-label {
+  font-weight: bold;
+  color: #666;
+  min-width: 60px;
+}
+
+.path-value {
+  color: #333;
+  margin-left: 5px;
+}
+
+.org-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+}
+
+.detail-label {
+  font-weight: bold;
+  color: #666;
+  margin-right: 5px;
+}
+
+.detail-value {
+  color: #333;
 }
 
 .info-item {

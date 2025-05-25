@@ -3,11 +3,15 @@ package com.example.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.dto.LoginDTO;
 import com.example.dto.RegisterDTO;
+import com.example.entity.Organization;
 import com.example.entity.Role;
 import com.example.entity.User;
+import com.example.entity.UserOrganization;
 import com.example.entity.UserRole;
+import com.example.mapper.OrganizationMapper;
 import com.example.mapper.RoleMapper;
 import com.example.mapper.UserMapper;
+import com.example.mapper.UserOrganizationMapper;
 import com.example.mapper.UserRoleMapper;
 import com.example.service.MenuService;
 import com.example.service.UserService;
@@ -18,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import com.example.util.PasswordUtil;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -38,6 +43,12 @@ public class UserServiceImpl implements UserService {
     
     @Autowired
     private MenuService menuService;
+    
+    @Autowired
+    private UserOrganizationMapper userOrganizationMapper;
+    
+    @Autowired
+    private OrganizationMapper organizationMapper;
     
     @Autowired
     private PasswordUtil passwordUtil;
@@ -96,9 +107,9 @@ public class UserServiceImpl implements UserService {
         
         userMapper.insert(user);
         
-        // 分配默认角色（用户角色）
+        // 分配默认角色（学生角色）
         LambdaQueryWrapper<Role> roleWrapper = new LambdaQueryWrapper<>();
-        roleWrapper.eq(Role::getRoleCode, "USER");
+        roleWrapper.eq(Role::getRoleCode, "STUDENT");
         Role userRole = roleMapper.selectOne(roleWrapper);
         
         if (userRole != null) {
@@ -145,6 +156,86 @@ public class UserServiceImpl implements UserService {
         userInfoVO.setMenus(menuService.getUserMenus(user.getId()));
         userInfoVO.setButtons(menuService.getUserButtons(user.getId()));
         
+        // 获取用户组织信息
+        List<UserInfoVO.OrganizationInfoVO> organizations = getUserOrganizations(user.getId());
+        userInfoVO.setOrganizations(organizations);
+        
         return userInfoVO;
+    }
+    
+    /**
+     * 获取用户组织信息
+     */
+    private List<UserInfoVO.OrganizationInfoVO> getUserOrganizations(Long userId) {
+        // 查询用户关联的组织
+        LambdaQueryWrapper<UserOrganization> userOrgWrapper = new LambdaQueryWrapper<>();
+        userOrgWrapper.eq(UserOrganization::getUserId, userId);
+        List<UserOrganization> userOrganizations = userOrganizationMapper.selectList(userOrgWrapper);
+        
+        if (userOrganizations.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        // 获取组织ID列表
+        List<Long> orgIds = userOrganizations.stream()
+                .map(UserOrganization::getOrganizationId)
+                .collect(Collectors.toList());
+        
+        // 查询组织信息
+        LambdaQueryWrapper<Organization> orgWrapper = new LambdaQueryWrapper<>();
+        orgWrapper.in(Organization::getId, orgIds)
+                .eq(Organization::getStatus, 1);
+        List<Organization> organizations = organizationMapper.selectList(orgWrapper);
+        
+        return organizations.stream().map(org -> {
+            UserInfoVO.OrganizationInfoVO orgInfo = new UserInfoVO.OrganizationInfoVO();
+            orgInfo.setId(org.getId());
+            orgInfo.setOrgName(org.getOrgName());
+            orgInfo.setOrgCode(org.getOrgCode());
+            orgInfo.setOrgType(org.getOrgType());
+            orgInfo.setOrgLevel(org.getOrgLevel());
+            
+            // 构建完整的组织路径信息
+            buildOrganizationPath(org, orgInfo);
+            
+            return orgInfo;
+        }).collect(Collectors.toList());
+    }
+    
+    /**
+     * 构建组织路径信息（学院-专业-班级）
+     */
+    private void buildOrganizationPath(Organization currentOrg, UserInfoVO.OrganizationInfoVO orgInfo) {
+        Organization org = currentOrg;
+        Organization college = null, major = null, classOrg = null;
+        
+        // 根据当前组织级别确定位置
+        while (org != null) {
+            if (org.getOrgLevel() == 1) { // 学院
+                college = org;
+            } else if (org.getOrgLevel() == 2) { // 专业
+                major = org;
+            } else if (org.getOrgLevel() == 3) { // 班级
+                classOrg = org;
+            }
+            
+            // 查找父级组织
+            if (org.getParentId() != null && org.getParentId() != 0) {
+                org = organizationMapper.selectById(org.getParentId());
+            } else {
+                break;
+            }
+        }
+        
+        // 设置组织路径信息
+        if (college != null) {
+            orgInfo.setCollegeName(college.getOrgName());
+        }
+        if (major != null) {
+            orgInfo.setMajorName(major.getOrgName());
+        }
+        if (classOrg != null) {
+            orgInfo.setClassName(classOrg.getOrgName());
+        }
     }
 } 

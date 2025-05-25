@@ -1,3 +1,6 @@
+-- 修改原有用户角色为学生角色（放在最前面确保先执行）
+UPDATE `sys_role` SET `role_name` = '学生', `role_code` = 'STUDENT', `description` = '学生角色，拥有学习相关权限' WHERE `role_code` = 'USER';
+
 -- 如果表已存在，先删除负责人字段
 ALTER TABLE `sys_organization` DROP COLUMN IF EXISTS `leader`;
 
@@ -111,11 +114,54 @@ INSERT INTO `sys_user` (`username`, `password`, `nickname`, `email`, `phone`, `s
 ('teacher1', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iKyZFzUNjKUFVFDaWdKyUgdEKDOy', '张老师', 'teacher1@university.edu', '13900139001', 1),
 ('teacher2', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iKyZFzUNjKUFVFDaWdKyUgdEKDOy', '李老师', 'teacher2@university.edu', '13900139002', 1);
 
--- 获取教师用户ID
-SET @teacher1_id = (SELECT id FROM sys_user WHERE username = 'teacher1');
-SET @teacher2_id = (SELECT id FROM sys_user WHERE username = 'teacher2');
+
 
 -- 为教师用户分配教师角色
-INSERT INTO `sys_user_role` (`user_id`, `role_id`) VALUES
-(@teacher1_id, @teacher_role_id),
-(@teacher2_id, @teacher_role_id); 
+INSERT INTO `sys_user_role` (`user_id`, `role_id`) 
+SELECT u.id, r.id 
+FROM `sys_user` u, `sys_role` r 
+WHERE u.username IN ('teacher1', 'teacher2') 
+AND r.role_code = 'TEACHER';
+
+-- 创建用户组织关联表
+CREATE TABLE `sys_user_organization` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id` bigint NOT NULL COMMENT '用户ID',
+  `organization_id` bigint NOT NULL COMMENT '组织ID',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_org` (`user_id`, `organization_id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_organization_id` (`organization_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户组织关联表';
+
+-- 添加学生用户示例
+INSERT INTO `sys_user` (`username`, `password`, `nickname`, `email`, `phone`, `status`) VALUES
+('student1', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iKyZFzUNjKUFVFDaWdKyUgdEKDOy', '张三', 'student1@university.edu', '13700137001', 1),
+('student2', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iKyZFzUNjKUFVFDaWdKyUgdEKDOy', '李四', 'student2@university.edu', '13700137002', 1),
+('student3', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iKyZFzUNjKUFVFDaWdKyUgdEKDOy', '王五', 'student3@university.edu', '13700137003', 1);
+
+-- 用户角色分配
+
+-- 为学生用户分配学生角色
+INSERT INTO `sys_user_role` (`user_id`, `role_id`) 
+SELECT u.id, r.id 
+FROM `sys_user` u, `sys_role` r 
+WHERE u.username IN ('student1', 'student2', 'student3') 
+AND r.role_code = 'STUDENT';
+
+-- 为教师分配多个班级（示例：张老师负责计科和软工的班级）
+INSERT INTO `sys_user_organization` (`user_id`, `organization_id`) 
+SELECT u.id, o.id 
+FROM `sys_user` u, `sys_organization` o 
+WHERE u.username = 'teacher1' 
+AND o.org_code IN ('CS_2021_1', 'CS_2021_2', 'SE_2021_1');
+
+-- 为学生分配班级（一个学生只能属于一个班级）
+INSERT INTO `sys_user_organization` (`user_id`, `organization_id`) 
+SELECT u.id, o.id 
+FROM `sys_user` u, `sys_organization` o 
+WHERE (u.username = 'student1' AND o.org_code = 'CS_2021_1')
+   OR (u.username = 'student2' AND o.org_code = 'CS_2021_2')
+   OR (u.username = 'student3' AND o.org_code = 'SE_2021_1'); 

@@ -7,15 +7,19 @@ import com.example.entity.Organization;
 import com.example.entity.Role;
 import com.example.entity.RoleMenu;
 import com.example.entity.User;
+import com.example.entity.UserOrganization;
 import com.example.entity.UserRole;
 import com.example.mapper.MenuMapper;
 import com.example.mapper.OrganizationMapper;
 import com.example.mapper.RoleMapper;
 import com.example.mapper.RoleMenuMapper;
 import com.example.mapper.UserMapper;
+import com.example.mapper.UserOrganizationMapper;
 import com.example.mapper.UserRoleMapper;
+import com.example.dto.AssignOrganizationRequest;
 import com.example.vo.MenuVO;
 import com.example.vo.OrganizationVO;
+import com.example.vo.UserWithRoleVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.example.util.PasswordUtil;
 import org.springframework.web.bind.annotation.*;
@@ -49,18 +53,53 @@ public class AdminController {
     private OrganizationMapper organizationMapper;
     
     @Autowired
+    private UserOrganizationMapper userOrganizationMapper;
+    
+    @Autowired
     private PasswordUtil passwordUtil;
     
     // 获取所有用户
     @GetMapping("/users")
-    public Result<List<User>> getAllUsers() {
+    public Result<List<UserWithRoleVO>> getAllUsers() {
         try {
             LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(User::getStatus, 1);
             List<User> users = userMapper.selectList(wrapper);
-            // 清空密码字段
-            users.forEach(user -> user.setPassword(null));
-            return Result.success(users);
+            
+            List<UserWithRoleVO> userWithRoleVOs = users.stream().map(user -> {
+                UserWithRoleVO userVO = new UserWithRoleVO();
+                userVO.setId(user.getId());
+                userVO.setUsername(user.getUsername());
+                userVO.setNickname(user.getNickname());
+                userVO.setEmail(user.getEmail());
+                userVO.setPhone(user.getPhone());
+                userVO.setStatus(user.getStatus());
+                userVO.setCreateTime(user.getCreateTime());
+                userVO.setUpdateTime(user.getUpdateTime());
+                
+                // 获取用户角色信息
+                LambdaQueryWrapper<UserRole> userRoleWrapper = new LambdaQueryWrapper<>();
+                userRoleWrapper.eq(UserRole::getUserId, user.getId());
+                List<UserRole> userRoles = userRoleMapper.selectList(userRoleWrapper);
+                
+                List<String> roleNames = new ArrayList<>();
+                List<Long> roleIds = new ArrayList<>();
+                
+                for (UserRole userRole : userRoles) {
+                    Role role = roleMapper.selectById(userRole.getRoleId());
+                    if (role != null) {
+                        roleNames.add(role.getRoleName());
+                        roleIds.add(role.getId());
+                    }
+                }
+                
+                userVO.setRoleNames(roleNames);
+                userVO.setRoleIds(roleIds);
+                
+                return userVO;
+            }).collect(Collectors.toList());
+            
+            return Result.success(userWithRoleVOs);
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }
@@ -172,6 +211,24 @@ public class AdminController {
         }
     }
     
+    // 获取用户当前角色
+    @GetMapping("/user-roles/{userId}")
+    public Result<List<Long>> getUserRoles(@PathVariable Long userId) {
+        try {
+            LambdaQueryWrapper<UserRole> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(UserRole::getUserId, userId);
+            List<UserRole> userRoles = userRoleMapper.selectList(wrapper);
+            
+            List<Long> roleIds = userRoles.stream()
+                    .map(UserRole::getRoleId)
+                    .collect(Collectors.toList());
+            
+            return Result.success(roleIds);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
     // 分配用户角色
     @PostMapping("/assign-role")
     public Result<Void> assignRole(@RequestParam Long userId, @RequestParam Long roleId) {
@@ -635,5 +692,260 @@ public class AdminController {
         }
         
         return tree;
+    }
+    
+    // ==================== 用户组织分配相关接口 ====================
+    
+    // 分配用户组织（支持学院、专业、班级层级分配）
+    @PostMapping("/assign-organization")
+    public Result<Void> assignOrganization(@RequestBody AssignOrganizationRequest request) {
+        Long userId = request.getUserId();
+        Long collegeId = request.getCollegeId();
+        Long majorId = request.getMajorId();
+        List<Long> classIds = request.getClassIds();
+        try {
+            // 获取用户角色信息来判断分配规则
+            LambdaQueryWrapper<UserRole> roleWrapper = new LambdaQueryWrapper<>();
+            roleWrapper.eq(UserRole::getUserId, userId);
+            List<UserRole> userRoles = userRoleMapper.selectList(roleWrapper);
+            
+            if (userRoles.isEmpty()) {
+                return Result.error("用户未分配角色");
+            }
+            
+            // 获取角色编码
+            List<Long> roleIds = userRoles.stream().map(UserRole::getRoleId).collect(Collectors.toList());
+            LambdaQueryWrapper<Role> wrapper = new LambdaQueryWrapper<>();
+            wrapper.in(Role::getId, roleIds);
+            List<Role> roles = roleMapper.selectList(wrapper);
+            
+            boolean isStudent = roles.stream().anyMatch(role -> "STUDENT".equals(role.getRoleCode()));
+            boolean isTeacher = roles.stream().anyMatch(role -> "TEACHER".equals(role.getRoleCode()));
+            
+            // 构建要分配的组织ID列表
+            List<Long> organizationIds = new ArrayList<>();
+            
+            if (isStudent) {
+                // 学生必须完整分配：学院 + 专业 + 班级
+                if (collegeId == null || majorId == null || classIds == null || classIds.isEmpty()) {
+                    return Result.error("学生必须完整分配学院、专业和班级");
+                }
+                
+                if (classIds.size() > 1) {
+                    return Result.error("学生只能分配一个班级");
+                }
+                
+                // 验证层级关系
+                Organization college = organizationMapper.selectById(collegeId);
+                Organization major = organizationMapper.selectById(majorId);
+                Organization classOrg = organizationMapper.selectById(classIds.get(0));
+                
+                if (college == null || college.getOrgLevel() != 1) {
+                    return Result.error("请选择正确的学院");
+                }
+                if (major == null || major.getOrgLevel() != 2 || !major.getParentId().equals(collegeId)) {
+                    return Result.error("专业必须属于所选学院");
+                }
+                if (classOrg == null || classOrg.getOrgLevel() != 3 || !classOrg.getParentId().equals(majorId)) {
+                    return Result.error("班级必须属于所选专业");
+                }
+                
+                // 学生只分配到班级（因为班级包含了完整的层级信息）
+                organizationIds.add(classIds.get(0));
+                
+            } else if (isTeacher) {
+                // 教师可以分配多个班级，但至少要有学院和专业信息
+                if (collegeId == null || majorId == null) {
+                    return Result.error("教师至少需要分配学院和专业");
+                }
+                
+                // 验证学院和专业的关系
+                Organization college = organizationMapper.selectById(collegeId);
+                Organization major = organizationMapper.selectById(majorId);
+                
+                if (college == null || college.getOrgLevel() != 1) {
+                    return Result.error("请选择正确的学院");
+                }
+                if (major == null || major.getOrgLevel() != 2 || !major.getParentId().equals(collegeId)) {
+                    return Result.error("专业必须属于所选学院");
+                }
+                
+                // 如果指定了班级，验证所有班级关系并添加到分配列表
+                if (classIds != null && !classIds.isEmpty()) {
+                    for (Long classId : classIds) {
+                        Organization classOrg = organizationMapper.selectById(classId);
+                        if (classOrg == null || classOrg.getOrgLevel() != 3 || !classOrg.getParentId().equals(majorId)) {
+                            return Result.error("所有班级必须属于所选专业");
+                        }
+                        organizationIds.add(classId);
+                    }
+                } else {
+                    // 如果没有指定班级，则分配到专业级别
+                    organizationIds.add(majorId);
+                }
+            } else {
+                // 其他角色（如管理员等）的分配逻辑
+                if (collegeId == null) {
+                    return Result.error("请至少选择学院");
+                }
+                
+                // 验证学院
+                Organization college = organizationMapper.selectById(collegeId);
+                if (college == null || college.getOrgLevel() != 1) {
+                    return Result.error("请选择正确的学院");
+                }
+                
+                if (majorId != null) {
+                    // 验证专业
+                    Organization major = organizationMapper.selectById(majorId);
+                    if (major == null || major.getOrgLevel() != 2 || !major.getParentId().equals(collegeId)) {
+                        return Result.error("专业必须属于所选学院");
+                    }
+                    
+                    if (classIds != null && !classIds.isEmpty()) {
+                        // 如果指定了班级，验证班级关系并分配到班级
+                        if (classIds.size() > 1) {
+                            return Result.error("非教师用户只能分配一个班级");
+                        }
+                        
+                        Organization classOrg = organizationMapper.selectById(classIds.get(0));
+                        if (classOrg == null || classOrg.getOrgLevel() != 3 || !classOrg.getParentId().equals(majorId)) {
+                            return Result.error("班级必须属于所选专业");
+                        }
+                        organizationIds.add(classIds.get(0));
+                    } else {
+                        // 没有指定班级，分配到专业级别
+                        organizationIds.add(majorId);
+                    }
+                } else {
+                    // 只选择了学院，分配到学院级别
+                    organizationIds.add(collegeId);
+                }
+            }
+            
+            // 先删除用户现有组织关联
+            LambdaQueryWrapper<UserOrganization> deleteWrapper = new LambdaQueryWrapper<>();
+            deleteWrapper.eq(UserOrganization::getUserId, userId);
+            userOrganizationMapper.delete(deleteWrapper);
+            
+            // 分配新的组织关联
+            if (!organizationIds.isEmpty()) {
+                List<UserOrganization> userOrganizations = organizationIds.stream().map(orgId -> {
+                    UserOrganization userOrg = new UserOrganization();
+                    userOrg.setUserId(userId);
+                    userOrg.setOrganizationId(orgId);
+                    userOrg.setCreateTime(LocalDateTime.now());
+                    userOrg.setUpdateTime(LocalDateTime.now());
+                    return userOrg;
+                }).collect(Collectors.toList());
+                
+                userOrganizations.forEach(userOrganizationMapper::insert);
+            }
+            
+            return Result.success();
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    // 获取用户已分配的组织ID列表
+    @GetMapping("/user-organizations/{userId}")
+    public Result<List<Long>> getUserOrganizations(@PathVariable Long userId) {
+        try {
+            LambdaQueryWrapper<UserOrganization> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(UserOrganization::getUserId, userId);
+            List<UserOrganization> userOrganizations = userOrganizationMapper.selectList(wrapper);
+            
+            List<Long> organizationIds = userOrganizations.stream()
+                    .map(UserOrganization::getOrganizationId)
+                    .collect(Collectors.toList());
+            
+            return Result.success(organizationIds);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    // 根据级别获取组织列表
+    @GetMapping("/organizations-by-level/{level}")
+    public Result<List<OrganizationVO>> getOrganizationsByLevel(@PathVariable Integer level) {
+        try {
+            LambdaQueryWrapper<Organization> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(Organization::getOrgLevel, level)
+                    .eq(Organization::getStatus, 1)
+                    .orderByAsc(Organization::getSort);
+            List<Organization> organizations = organizationMapper.selectList(wrapper);
+            
+            List<OrganizationVO> organizationVOs = organizations.stream().map(org -> {
+                OrganizationVO orgVO = new OrganizationVO();
+                orgVO.setId(org.getId());
+                orgVO.setOrgName(org.getOrgName());
+                orgVO.setOrgCode(org.getOrgCode());
+                orgVO.setParentId(org.getParentId());
+                orgVO.setOrgType(org.getOrgType());
+                orgVO.setOrgLevel(org.getOrgLevel());
+                orgVO.setSort(org.getSort());
+                
+                return orgVO;
+            }).collect(Collectors.toList());
+            
+            return Result.success(organizationVOs);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    // 根据父级ID获取子组织列表
+    @GetMapping("/organizations-by-parent/{parentId}")
+    public Result<List<OrganizationVO>> getOrganizationsByParent(@PathVariable Long parentId) {
+        try {
+            LambdaQueryWrapper<Organization> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(Organization::getParentId, parentId)
+                    .eq(Organization::getStatus, 1)
+                    .orderByAsc(Organization::getSort);
+            List<Organization> organizations = organizationMapper.selectList(wrapper);
+            
+            List<OrganizationVO> organizationVOs = organizations.stream().map(org -> {
+                OrganizationVO orgVO = new OrganizationVO();
+                orgVO.setId(org.getId());
+                orgVO.setOrgName(org.getOrgName());
+                orgVO.setOrgCode(org.getOrgCode());
+                orgVO.setParentId(org.getParentId());
+                orgVO.setOrgType(org.getOrgType());
+                orgVO.setOrgLevel(org.getOrgLevel());
+                orgVO.setSort(org.getSort());
+                
+                return orgVO;
+            }).collect(Collectors.toList());
+            
+            return Result.success(organizationVOs);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    // 构建完整组织路径
+    private void buildFullOrgPath(Organization classOrg, OrganizationVO orgVO) {
+        StringBuilder fullPath = new StringBuilder();
+        Organization current = classOrg;
+        
+        // 获取专业信息
+        if (current.getParentId() != null && current.getParentId() != 0) {
+            Organization major = organizationMapper.selectById(current.getParentId());
+            if (major != null) {
+                // 获取学院信息
+                if (major.getParentId() != null && major.getParentId() != 0) {
+                    Organization college = organizationMapper.selectById(major.getParentId());
+                    if (college != null) {
+                        fullPath.append(college.getOrgName()).append(" - ");
+                    }
+                }
+                fullPath.append(major.getOrgName()).append(" - ");
+            }
+        }
+        fullPath.append(classOrg.getOrgName());
+        
+        // 将完整路径设置到orgName中显示
+        orgVO.setOrgName(fullPath.toString());
     }
 } 
