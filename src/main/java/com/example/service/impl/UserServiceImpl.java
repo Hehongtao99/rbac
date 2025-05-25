@@ -15,7 +15,7 @@ import com.example.util.JwtUtil;
 import com.example.vo.LoginVO;
 import com.example.vo.UserInfoVO;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import com.example.util.PasswordUtil;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -39,7 +39,8 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private MenuService menuService;
     
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    @Autowired
+    private PasswordUtil passwordUtil;
     
     @Override
     public LoginVO login(LoginDTO loginDTO) {
@@ -52,7 +53,7 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("用户不存在");
         }
         
-        if (!passwordEncoder.matches(loginDTO.getPassword(), user.getPassword())) {
+        if (!passwordUtil.matches(loginDTO.getPassword(), user.getPassword())) {
             throw new RuntimeException("密码错误");
         }
         
@@ -87,7 +88,7 @@ public class UserServiceImpl implements UserService {
         // 创建用户
         User user = new User();
         user.setUsername(registerDTO.getUsername());
-        user.setPassword(passwordEncoder.encode(registerDTO.getPassword()));
+        user.setPassword(passwordUtil.encode(registerDTO.getPassword()));
         user.setNickname(registerDTO.getNickname());
         user.setEmail(registerDTO.getEmail());
         user.setPhone(registerDTO.getPhone());

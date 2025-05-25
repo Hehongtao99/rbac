@@ -28,6 +28,7 @@
 - ✅ 动态菜单系统
 - ✅ 功能按钮权限控制
 - ✅ 用户完整的增删改查功能
+- ✅ 角色完整的增删改查功能
 - ✅ 用户角色管理
 - ✅ 管理员权限分配
 - ✅ 管理员超级权限（始终显示所有菜单和按钮）
@@ -145,6 +146,10 @@ npm run dev
 
 #### 角色权限管理
 - `GET /api/admin/roles` - 获取所有角色
+- `POST /api/admin/roles` - 新增角色
+- `GET /api/admin/roles/{id}` - 获取单个角色信息
+- `PUT /api/admin/roles/{id}` - 更新角色信息
+- `DELETE /api/admin/roles/{id}` - 删除角色（软删除）
 - `GET /api/admin/menus` - 获取菜单树
 - `GET /api/admin/role-menus/{roleId}` - 获取角色菜单权限
 - `POST /api/admin/assign-menu` - 分配角色菜单权限

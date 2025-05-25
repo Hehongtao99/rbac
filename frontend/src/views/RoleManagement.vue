@@ -63,6 +63,38 @@
       </el-table>
     </div>
 
+    <!-- 新增/编辑角色对话框 -->
+    <el-dialog v-model="roleDialogVisible" :title="isEdit ? '编辑角色' : '新增角色'" width="500px">
+      <el-form :model="roleForm" :rules="roleRules" ref="roleFormRef" label-width="80px">
+        <el-form-item label="角色名称" prop="roleName">
+          <el-input v-model="roleForm.roleName" placeholder="请输入角色名称" />
+        </el-form-item>
+        <el-form-item label="角色编码" prop="roleCode">
+          <el-input v-model="roleForm.roleCode" placeholder="请输入角色编码（如：ADMIN、USER）" />
+        </el-form-item>
+        <el-form-item label="角色描述" prop="description">
+          <el-input 
+            v-model="roleForm.description" 
+            type="textarea" 
+            :rows="3" 
+            placeholder="请输入角色描述" 
+          />
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-select v-model="roleForm.status" placeholder="请选择状态">
+            <el-option label="启用" :value="1" />
+            <el-option label="禁用" :value="0" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="closeRoleDialog">取消</el-button>
+        <el-button type="primary" @click="confirmRole" :loading="roleLoading">
+          确定
+        </el-button>
+      </template>
+    </el-dialog>
+
     <!-- 分配权限对话框 -->
     <el-dialog v-model="assignMenuVisible" title="分配权限" width="600px" @opened="onDialogOpened">
       <div class="assign-menu-content">
@@ -99,11 +131,23 @@ export default {
   setup() {
     const roles = ref([])
     const loading = ref(false)
+    const roleDialogVisible = ref(false)
+    const roleLoading = ref(false)
+    const isEdit = ref(false)
+    const roleFormRef = ref()
     const assignMenuVisible = ref(false)
     const assignLoading = ref(false)
     const menuTreeRef = ref()
     const menuTreeData = ref([])
     const checkedMenuIds = ref([])
+    
+    const roleForm = reactive({
+      id: null,
+      roleName: '',
+      roleCode: '',
+      description: '',
+      status: 1
+    })
     
     const assignMenuForm = reactive({
       roleId: null,
@@ -113,6 +157,25 @@ export default {
     const treeProps = {
       children: 'children',
       label: 'menuName'
+    }
+
+    // 表单验证规则
+    const roleRules = {
+      roleName: [
+        { required: true, message: '请输入角色名称', trigger: 'blur' },
+        { min: 2, max: 20, message: '角色名称长度在 2 到 20 个字符', trigger: 'blur' }
+      ],
+      roleCode: [
+        { required: true, message: '请输入角色编码', trigger: 'blur' },
+        { min: 2, max: 20, message: '角色编码长度在 2 到 20 个字符', trigger: 'blur' },
+        { pattern: /^[A-Z_]+$/, message: '角色编码只能包含大写字母和下划线', trigger: 'blur' }
+      ],
+      description: [
+        { max: 200, message: '描述长度不能超过 200 个字符', trigger: 'blur' }
+      ],
+      status: [
+        { required: true, message: '请选择状态', trigger: 'change' }
+      ]
     }
 
     // 使用响应式权限检查
@@ -182,14 +245,78 @@ export default {
       return leafNodes
     }
 
+    // 重置角色表单
+    const resetRoleForm = () => {
+      roleForm.id = null
+      roleForm.roleName = ''
+      roleForm.roleCode = ''
+      roleForm.description = ''
+      roleForm.status = 1
+      
+      if (roleFormRef.value) {
+        roleFormRef.value.clearValidate()
+      }
+    }
+
+    // 关闭角色对话框
+    const closeRoleDialog = () => {
+      roleDialogVisible.value = false
+      resetRoleForm()
+    }
+
+    // 确认新增/编辑角色
+    const confirmRole = async () => {
+      if (!roleFormRef.value) return
+      
+      try {
+        await roleFormRef.value.validate()
+        roleLoading.value = true
+        
+        if (isEdit.value) {
+          // 编辑角色
+          await request.put(`/admin/roles/${roleForm.id}`, roleForm)
+          ElMessage.success('编辑角色成功')
+        } else {
+          // 新增角色
+          await request.post('/admin/roles', roleForm)
+          ElMessage.success('新增角色成功')
+        }
+        
+        closeRoleDialog()
+        fetchRoles()
+      } catch (error) {
+        console.error('操作失败:', error)
+        ElMessage.error(error.response?.data?.message || '操作失败')
+      } finally {
+        roleLoading.value = false
+      }
+    }
+
     // 新增角色
     const handleAdd = () => {
-      ElMessage.info('新增角色功能待实现')
+      isEdit.value = false
+      resetRoleForm()
+      roleDialogVisible.value = true
     }
 
     // 编辑角色
-    const handleEdit = (row) => {
-      ElMessage.info('编辑角色功能待实现')
+    const handleEdit = async (row) => {
+      try {
+        isEdit.value = true
+        const response = await request.get(`/admin/roles/${row.id}`)
+        const roleData = response.data
+        
+        roleForm.id = roleData.id
+        roleForm.roleName = roleData.roleName
+        roleForm.roleCode = roleData.roleCode
+        roleForm.description = roleData.description
+        roleForm.status = roleData.status
+        
+        roleDialogVisible.value = true
+      } catch (error) {
+        console.error('获取角色信息失败:', error)
+        ElMessage.error('获取角色信息失败')
+      }
     }
 
     // 分配权限
@@ -271,9 +398,14 @@ export default {
           type: 'warning'
         })
         
-        ElMessage.info('删除角色功能待实现')
+        await request.delete(`/admin/roles/${row.id}`)
+        ElMessage.success('删除角色成功')
+        fetchRoles()
       } catch (error) {
-        // 用户取消操作
+        if (error.response) {
+          ElMessage.error(error.response.data?.message || '删除角色失败')
+        }
+        // 用户取消操作不显示错误
       }
     }
 
@@ -284,6 +416,12 @@ export default {
     return {
       roles,
       loading,
+      roleDialogVisible,
+      roleLoading,
+      isEdit,
+      roleForm,
+      roleRules,
+      roleFormRef,
       assignMenuVisible,
       assignLoading,
       menuTreeRef,
@@ -295,6 +433,8 @@ export default {
       formatDate,
       handleAdd,
       handleEdit,
+      confirmRole,
+      closeRoleDialog,
       handleAssignMenu,
       onDialogOpened,
       closeAssignDialog,

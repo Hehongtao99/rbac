@@ -14,7 +14,7 @@ import com.example.mapper.UserMapper;
 import com.example.mapper.UserRoleMapper;
 import com.example.vo.MenuVO;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import com.example.util.PasswordUtil;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -43,7 +43,7 @@ public class AdminController {
     private RoleMenuMapper roleMenuMapper;
     
     @Autowired
-    private BCryptPasswordEncoder passwordEncoder;
+    private PasswordUtil passwordUtil;
     
     // 获取所有用户
     @GetMapping("/users")
@@ -73,7 +73,7 @@ public class AdminController {
             }
             
             // 密码加密
-            user.setPassword(passwordEncoder.encode(user.getPassword()));
+            user.setPassword(passwordUtil.encode(user.getPassword()));
             user.setCreateTime(LocalDateTime.now());
             user.setUpdateTime(LocalDateTime.now());
             user.setStatus(1);
@@ -110,7 +110,7 @@ public class AdminController {
             
             // 如果密码不为空，则更新密码
             if (user.getPassword() != null && !user.getPassword().trim().isEmpty()) {
-                user.setPassword(passwordEncoder.encode(user.getPassword()));
+                user.setPassword(passwordUtil.encode(user.getPassword()));
             } else {
                 // 保持原密码
                 user.setPassword(existUser.getPassword());
@@ -219,9 +219,130 @@ public class AdminController {
     public Result<List<Role>> getAllRoles() {
         try {
             LambdaQueryWrapper<Role> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(Role::getStatus, 1);
+            wrapper.eq(Role::getStatus, 1)
+                    .orderByAsc(Role::getId);
             List<Role> roles = roleMapper.selectList(wrapper);
             return Result.success(roles);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    // 新增角色
+    @PostMapping("/roles")
+    public Result<Void> addRole(@RequestBody Role role) {
+        try {
+            // 检查角色名称是否已存在
+            LambdaQueryWrapper<Role> checkWrapper = new LambdaQueryWrapper<>();
+            checkWrapper.eq(Role::getRoleName, role.getRoleName());
+            Role existRole = roleMapper.selectOne(checkWrapper);
+            if (existRole != null) {
+                return Result.error("角色名称已存在");
+            }
+            
+            // 检查角色编码是否已存在
+            LambdaQueryWrapper<Role> codeWrapper = new LambdaQueryWrapper<>();
+            codeWrapper.eq(Role::getRoleCode, role.getRoleCode());
+            Role existCodeRole = roleMapper.selectOne(codeWrapper);
+            if (existCodeRole != null) {
+                return Result.error("角色编码已存在");
+            }
+            
+            role.setCreateTime(LocalDateTime.now());
+            role.setUpdateTime(LocalDateTime.now());
+            role.setStatus(1);
+            
+            roleMapper.insert(role);
+            return Result.success();
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    // 更新角色
+    @PutMapping("/roles/{id}")
+    public Result<Void> updateRole(@PathVariable Long id, @RequestBody Role role) {
+        try {
+            // 检查角色是否存在
+            Role existRole = roleMapper.selectById(id);
+            if (existRole == null) {
+                return Result.error("角色不存在");
+            }
+            
+            // 检查角色名称是否被其他角色使用
+            LambdaQueryWrapper<Role> checkWrapper = new LambdaQueryWrapper<>();
+            checkWrapper.eq(Role::getRoleName, role.getRoleName())
+                    .ne(Role::getId, id);
+            Role duplicateRole = roleMapper.selectOne(checkWrapper);
+            if (duplicateRole != null) {
+                return Result.error("角色名称已被其他角色使用");
+            }
+            
+            // 检查角色编码是否被其他角色使用
+            LambdaQueryWrapper<Role> codeWrapper = new LambdaQueryWrapper<>();
+            codeWrapper.eq(Role::getRoleCode, role.getRoleCode())
+                    .ne(Role::getId, id);
+            Role duplicateCodeRole = roleMapper.selectOne(codeWrapper);
+            if (duplicateCodeRole != null) {
+                return Result.error("角色编码已被其他角色使用");
+            }
+            
+            // 更新角色信息
+            role.setId(id);
+            role.setUpdateTime(LocalDateTime.now());
+            role.setCreateTime(existRole.getCreateTime()); // 保持原创建时间
+            
+            roleMapper.updateById(role);
+            return Result.success();
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    // 删除角色
+    @DeleteMapping("/roles/{id}")
+    public Result<Void> deleteRole(@PathVariable Long id) {
+        try {
+            // 检查角色是否存在
+            Role existRole = roleMapper.selectById(id);
+            if (existRole == null) {
+                return Result.error("角色不存在");
+            }
+            
+            // 检查是否有用户使用该角色
+            LambdaQueryWrapper<UserRole> userRoleWrapper = new LambdaQueryWrapper<>();
+            userRoleWrapper.eq(UserRole::getRoleId, id);
+            long userCount = userRoleMapper.selectCount(userRoleWrapper);
+            if (userCount > 0) {
+                return Result.error("该角色正在被用户使用，无法删除");
+            }
+            
+            // 软删除：设置状态为0
+            existRole.setStatus(0);
+            existRole.setUpdateTime(LocalDateTime.now());
+            roleMapper.updateById(existRole);
+            
+            // 删除角色菜单关联
+            LambdaQueryWrapper<RoleMenu> roleMenuWrapper = new LambdaQueryWrapper<>();
+            roleMenuWrapper.eq(RoleMenu::getRoleId, id);
+            roleMenuMapper.delete(roleMenuWrapper);
+            
+            return Result.success();
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    // 获取单个角色信息
+    @GetMapping("/roles/{id}")
+    public Result<Role> getRoleById(@PathVariable Long id) {
+        try {
+            Role role = roleMapper.selectById(id);
+            if (role == null) {
+                return Result.error("角色不存在");
+            }
+            
+            return Result.success(role);
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }
