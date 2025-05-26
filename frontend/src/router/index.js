@@ -5,6 +5,8 @@ import Layout from '../views/Layout.vue'
 import UserManagement from '../views/UserManagement.vue'
 import RoleManagement from '../views/RoleManagement.vue'
 import OrganizationManagement from '../views/OrganizationManagement.vue'
+import TeacherManagement from '../views/TeacherManagement.vue'
+import StudentManagement from '../views/StudentManagement.vue'
 import Profile from '../views/Profile.vue'
 
 const routes = [
@@ -57,6 +59,22 @@ const routes = [
           component: OrganizationManagement,
           meta: {
             title: '组织管理'
+          }
+        },
+        {
+          path: '/system/teacher',
+          name: 'TeacherManagement',
+          component: TeacherManagement,
+          meta: {
+            title: '教师管理'
+          }
+        },
+        {
+          path: '/system/student',
+          name: 'StudentManagement',
+          component: StudentManagement,
+          meta: {
+            title: '学生管理'
           }
         },
       {
