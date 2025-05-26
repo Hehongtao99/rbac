@@ -55,4 +55,24 @@ public class StudentController {
     public Result<Object> getStudentById(@PathVariable Long id) {
         return studentService.getStudentById(id);
     }
+    
+    /**
+     * 分配学生年级和学制
+     */
+    @PutMapping("/assign-grade-education/{id}")
+    public Result<Object> assignGradeAndEducation(@PathVariable Long id, 
+                                                   @RequestParam String grade, 
+                                                   @RequestParam String educationSystem) {
+        return studentService.assignGradeAndEducation(id, grade, educationSystem);
+    }
+    
+    /**
+     * 设置学生学期信息
+     */
+    @PutMapping("/set-semester/{id}")
+    public Result<Object> setStudentSemester(@PathVariable Long id,
+                                             @RequestParam Integer currentYear,
+                                             @RequestParam Integer currentSemester) {
+        return studentService.setStudentSemester(id, currentYear, currentSemester, null);
+    }
 } 

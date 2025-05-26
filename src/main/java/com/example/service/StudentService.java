@@ -11,4 +11,6 @@ public interface StudentService extends IService<Student> {
     Result<Object> updateStudent(Long id, StudentDTO studentDTO);
     Result<Object> deleteStudent(Long id);
     Result<Object> getStudentById(Long id);
+    Result<Object> assignGradeAndEducation(Long id, String grade, String educationSystem);
+    Result<Object> setStudentSemester(Long id, Integer currentYear, Integer currentSemester, String enrollmentDate);
 } 

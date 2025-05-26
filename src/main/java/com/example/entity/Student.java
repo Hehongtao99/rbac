@@ -27,6 +27,18 @@ public class Student {
     
     private String grade;
     
+    private String educationSystem;
+    
+    private LocalDateTime enrollmentDate;
+    
+    private LocalDateTime graduationDate;
+    
+    private Integer currentYear;
+    
+    private Integer currentSemester;
+    
+    private String currentAcademicYear;
+    
     private Integer status;
     
     @TableField(fill = FieldFill.INSERT)

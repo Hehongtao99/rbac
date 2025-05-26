@@ -36,4 +36,26 @@ export const getStudentById = (id) => {
     url: `/student/${id}`,
     method: 'get'
   })
+}
+
+export const assignGradeAndEducation = (id, grade, educationSystem) => {
+  return request({
+    url: `/student/assign-grade-education/${id}`,
+    method: 'put',
+    params: {
+      grade,
+      educationSystem
+    }
+  })
+}
+
+export const setSemesterInfo = (id, currentYear, currentSemester) => {
+  return request({
+    url: `/student/set-semester/${id}`,
+    method: 'put',
+    params: {
+      currentYear,
+      currentSemester
+    }
+  })
 } 

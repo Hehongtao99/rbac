@@ -9,6 +9,7 @@ import TeacherManagement from '../views/TeacherManagement.vue'
 import StudentManagement from '../views/StudentManagement.vue'
 import NoticeManagement from '../views/NoticeManagement.vue'
 import NoticeView from '../views/NoticeView.vue'
+import CourseManagement from '../views/CourseManagement.vue'
 import Profile from '../views/Profile.vue'
 
 const routes = [
@@ -93,6 +94,14 @@ const routes = [
           component: NoticeView,
           meta: {
             title: '通知公告'
+          }
+        },
+        {
+          path: '/course/management',
+          name: 'CourseManagement',
+          component: CourseManagement,
+          meta: {
+            title: '课程管理'
           }
         },
       {

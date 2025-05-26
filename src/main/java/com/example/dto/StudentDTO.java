@@ -13,5 +13,11 @@ public class StudentDTO {
     private String major;
     private String className;
     private String grade;
+    private String educationSystem;
+    private String enrollmentDate;
+    private String graduationDate;
+    private Integer currentYear;
+    private Integer currentSemester;
+    private String currentAcademicYear;
     private Integer status;
 } 
