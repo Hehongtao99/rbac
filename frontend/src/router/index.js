@@ -7,6 +7,8 @@ import RoleManagement from '../views/RoleManagement.vue'
 import OrganizationManagement from '../views/OrganizationManagement.vue'
 import TeacherManagement from '../views/TeacherManagement.vue'
 import StudentManagement from '../views/StudentManagement.vue'
+import NoticeManagement from '../views/NoticeManagement.vue'
+import NoticeView from '../views/NoticeView.vue'
 import Profile from '../views/Profile.vue'
 
 const routes = [
@@ -75,6 +77,22 @@ const routes = [
           component: StudentManagement,
           meta: {
             title: '学生管理'
+          }
+        },
+        {
+          path: '/notice/management',
+          name: 'NoticeManagement',
+          component: NoticeManagement,
+          meta: {
+            title: '通知管理'
+          }
+        },
+        {
+          path: '/notice/view',
+          name: 'NoticeView',
+          component: NoticeView,
+          meta: {
+            title: '通知公告'
           }
         },
       {
