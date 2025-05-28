@@ -4,7 +4,7 @@
       <div class="header-content">
         <div class="header-info">
           <h2><el-icon><OfficeBuilding /></el-icon>组织架构管理</h2>
-          <p>管理省市区街道四级组织架构，支持街道级别的详细信息配置</p>
+          <p>管理省市区街道三级组织架构，支持街道级别的详细信息配置</p>
         </div>
         <el-button 
           v-if="hasPermission('organization:add')"
@@ -39,7 +39,7 @@
               <span class="node-label">{{ node.label }}</span>
               <div class="node-actions">
                 <el-button 
-                  v-if="data.level < 4 && hasPermission('organization:add')" 
+                  v-if="data.level < 3 && hasPermission('organization:add')" 
                   type="text" 
                   size="small" 
                   @click.stop="addChild(data)"
@@ -106,7 +106,7 @@
           </div>
 
           <!-- 街道级别显示经纬度和图片 -->
-          <template v-if="selectedNode.level === 4">
+          <template v-if="selectedNode.level === 3">
             <div class="detail-item">
               <label>经度：</label>
               <span>{{ selectedNode.longitude || '-' }}</span>
@@ -122,19 +122,74 @@
               <p>{{ selectedNode.description || '-' }}</p>
             </div>
             
-            <div class="detail-item" v-if="selectedNode.imageUrls && getImageList(selectedNode.imageUrls).length > 0">
-              <label>图片：</label>
+            <div class="detail-item" v-if="selectedNode.regionImage">
+              <label>区域图片：</label>
               <div class="images-preview">
-                <div class="image-grid">
-                  <el-image
-                    v-for="(image, index) in getImageList(selectedNode.imageUrls)"
-                    :key="index"
-                    :src="getImageUrl(image)"
-                    :preview-src-list="getImageList(selectedNode.imageUrls).map(img => getImageUrl(img))"
-                    :initial-index="index"
-                    fit="cover"
-                    class="preview-image"
-                  />
+                <el-image
+                  :src="getImageUrl(selectedNode.regionImage)"
+                  :preview-src-list="[getImageUrl(selectedNode.regionImage)]"
+                  fit="cover"
+                  class="preview-image"
+                />
+              </div>
+            </div>
+
+            <!-- 广告位信息 -->
+            <div class="detail-item">
+              <label>广告位统计：</label>
+              <div class="position-stats">
+                <el-tag size="large" type="info">
+                  总数: {{ positionStats.total }}
+                </el-tag>
+                <el-tag size="large" type="success">
+                  可申请: {{ positionStats.available }}
+                </el-tag>
+                <el-tag size="large" type="warning">
+                  已申请: {{ positionStats.applied }}
+                </el-tag>
+                <el-tag size="large" type="primary">
+                  已通过: {{ positionStats.approved }}
+                </el-tag>
+              </div>
+            </div>
+
+            <div class="detail-item" v-if="positionList.length > 0">
+              <label>广告位列表：</label>
+              <div class="position-list">
+                <div 
+                  v-for="position in positionList" 
+                  :key="position.id" 
+                  class="position-card"
+                >
+                  <div class="position-header">
+                    <span class="position-code">{{ position.code }}</span>
+                    <el-tag 
+                      :type="getPositionStatusType(position.applicationStatus)" 
+                      size="small"
+                    >
+                      {{ position.applicationStatusText }}
+                    </el-tag>
+                  </div>
+                  <div class="position-info">
+                    <div class="position-name">{{ position.positionName }}</div>
+                    <div class="position-area">面积: {{ position.area }}㎡</div>
+                    <div class="position-coords">
+                      经纬度: {{ position.longitude }}, {{ position.latitude }}
+                    </div>
+                  </div>
+                  <div v-if="position.positionImages && position.positionImages.length > 0" class="position-images">
+                    <el-image
+                      v-for="(image, index) in position.positionImages.slice(0, 2)"
+                      :key="index"
+                      :src="getImageUrl(image)"
+                      :preview-src-list="position.positionImages.map(img => getImageUrl(img))"
+                      fit="cover"
+                      class="position-thumb"
+                    />
+                    <span v-if="position.positionImages.length > 2" class="more-images">
+                      +{{ position.positionImages.length - 2 }}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -158,28 +213,30 @@
     <el-dialog
       :title="dialogTitle"
       v-model="dialogVisible"
-      width="600px"
+      :width="form.level === 3 ? '1000px' : '600px'"
       @close="resetForm"
     >
-      <el-form :model="form" ref="formRef" label-width="80px">
-        <el-form-item label="名称" prop="name" required>
-          <el-input v-model="form.name" placeholder="请输入名称" />
-        </el-form-item>
-        
-        <el-form-item label="全称" prop="fullName">
-          <el-input v-model="form.fullName" placeholder="请输入全称" />
-        </el-form-item>
-        
-        <el-form-item label="编码" prop="code">
-          <el-input v-model="form.code" placeholder="请输入编码" />
-        </el-form-item>
-        
-        <el-form-item label="排序" prop="sort">
-          <el-input-number v-model="form.sort" :min="0" />
-        </el-form-item>
+      <!-- 街道级别使用选项卡布局 -->
+      <el-tabs v-if="form.level === 3" v-model="activeTab" type="card">
+        <!-- 基本信息选项卡 -->
+        <el-tab-pane label="基本信息" name="basic">
+          <el-form :model="form" ref="formRef" label-width="80px">
+            <el-form-item label="名称" prop="name" required>
+              <el-input v-model="form.name" placeholder="请输入名称" />
+            </el-form-item>
+            
+            <el-form-item label="全称" prop="fullName">
+              <el-input v-model="form.fullName" placeholder="请输入全称" />
+            </el-form-item>
+            
+            <el-form-item label="编码" prop="code">
+              <el-input v-model="form.code" placeholder="请输入编码" />
+            </el-form-item>
+            
+            <el-form-item label="排序" prop="sort">
+              <el-input-number v-model="form.sort" :min="0" />
+            </el-form-item>
 
-                  <!-- 街道级别显示经纬度和图片字段 -->
-          <template v-if="form.level === 4">
             <el-form-item label="经度" prop="longitude">
               <el-input-number 
                 v-model="form.longitude" 
@@ -198,39 +255,35 @@
               />
             </el-form-item>
             
-            <el-form-item label="图片" prop="imageUrls">
+            <el-form-item label="区域图片" prop="regionImage">
               <div class="upload-container">
-                <!-- 已上传图片展示 -->
-                <div v-if="getImageList(form.imageUrls).length > 0" class="uploaded-images">
-                  <div class="image-item" v-for="(image, index) in getImageList(form.imageUrls)" :key="index">
-                    <el-image 
-                      :src="getImageUrl(image)"
-                      class="uploaded-image"
-                      fit="cover"
-                      @click="previewImages(index)"
-                    />
-                    <div class="image-actions">
-                      <el-button size="small" type="primary" @click="previewImages(index)" icon="View" circle></el-button>
-                      <el-button size="small" type="danger" @click="removeImage(index)" icon="Delete" circle></el-button>
-                    </div>
+                <!-- 已上传图片 -->
+                <div v-if="form.regionImage" class="image-item uploaded-region-image">
+                  <el-image 
+                    :src="getImageUrl(form.regionImage)"
+                    style="width: 200px; height: 150px; border-radius: 8px;"
+                    fit="cover"
+                    :preview-src-list="[getImageUrl(form.regionImage)]"
+                    class="uploaded-image"
+                  />
+                  <div class="image-actions">
+                    <el-button size="small" type="danger" @click="removeRegionImage" icon="Delete" circle />
                   </div>
                 </div>
                 
                 <!-- 上传区域 -->
                 <el-upload
-                  ref="uploadRef"
+                  v-if="!form.regionImage"
                   :action="''"
-                  :http-request="handleUpload"
+                  :http-request="handleRegionImageUpload"
                   :show-file-list="false"
                   :before-upload="beforeUpload"
                   accept="image/*"
-                  multiple
                   class="image-uploader"
                 >
                   <div class="upload-area">
                     <el-icon class="upload-icon"><Plus /></el-icon>
-                    <div class="upload-text">点击上传图片</div>
-                    <div class="upload-hint">支持多张图片上传</div>
+                    <div class="upload-text">点击上传区域图片</div>
                   </div>
                 </el-upload>
               </div>
@@ -246,7 +299,40 @@
                 show-word-limit
               />
             </el-form-item>
-          </template>
+        
+            <el-form-item label="状态" prop="isEnabled">
+              <el-switch v-model="form.isEnabled" />
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+
+        <!-- 广告位管理选项卡 -->
+        <el-tab-pane v-if="isEdit" label="广告位管理" name="positions">
+          <PositionManagement 
+            v-if="form.id" 
+            :region-id="form.id" 
+            :street-name="form.name"
+          />
+        </el-tab-pane>
+      </el-tabs>
+
+      <!-- 非街道级别使用普通表单 -->
+      <el-form v-else :model="form" ref="formRef" label-width="80px">
+        <el-form-item label="名称" prop="name" required>
+          <el-input v-model="form.name" placeholder="请输入名称" />
+        </el-form-item>
+        
+        <el-form-item label="全称" prop="fullName">
+          <el-input v-model="form.fullName" placeholder="请输入全称" />
+        </el-form-item>
+        
+        <el-form-item label="编码" prop="code">
+          <el-input v-model="form.code" placeholder="请输入编码" />
+        </el-form-item>
+        
+        <el-form-item label="排序" prop="sort">
+          <el-input-number v-model="form.sort" :min="0" />
+        </el-form-item>
         
         <el-form-item label="状态" prop="isEnabled">
           <el-switch v-model="form.isEnabled" />
@@ -256,7 +342,7 @@
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitForm">确定</el-button>
+          <el-button v-if="activeTab === 'basic' || form.level !== 3" type="primary" @click="submitForm">确定</el-button>
         </div>
       </template>
     </el-dialog>
@@ -273,20 +359,34 @@ import {
   deleteOrganization,
   uploadFile 
 } from '../api/organization'
+import { getPositionsByRegionId } from '../api/advertisement'
 import { usePermissions } from '../stores/permission'
+import PositionManagement from '../components/PositionManagement.vue'
 
 export default {
   name: 'OrganizationManagement',
+  components: {
+    PositionManagement
+  },
   setup() {
     const treeRef = ref()
     const formRef = ref()
-    const uploadRef = ref()
     
     const treeData = ref([])
     const selectedNode = ref(null)
     const dialogVisible = ref(false)
     const isEdit = ref(false)
     const uploading = ref(false)
+    const activeTab = ref('basic')
+    
+    // 广告位相关数据
+    const positionList = ref([])
+    const positionStats = reactive({
+      total: 0,
+      available: 0,
+      applied: 0,
+      approved: 0
+    })
     
     // 使用权限检查
     const { hasPermission } = usePermissions()
@@ -305,7 +405,7 @@ export default {
       level: 1,
       longitude: null,
       latitude: null,
-      imageUrls: '',
+      regionImage: '',
       description: '',
       sort: 0,
       isEnabled: true
@@ -313,13 +413,12 @@ export default {
 
     const dialogTitle = ref('添加组织')
 
-    // 级别文本映射
+    // 级别文本映射（修改为三级）
     const getLevelText = (level) => {
       const levelMap = {
         1: '省',
-        2: '市',
-        3: '区',
-        4: '街道'
+        2: '市', 
+        3: '街道'
       }
       return levelMap[level] || '-'
     }
@@ -328,9 +427,8 @@ export default {
     const getLevelTagType = (level) => {
       const tagTypeMap = {
         1: 'danger',
-        2: 'warning', 
-        3: 'primary',
-        4: 'success'
+        2: 'warning',
+        3: 'success'
       }
       return tagTypeMap[level] || ''
     }
@@ -358,34 +456,17 @@ export default {
       return true
     }
 
-    // 获取图片列表
-    const getImageList = (imageUrls) => {
-      if (!imageUrls) return []
-      try {
-        return JSON.parse(imageUrls)
-      } catch {
-        return []
-      }
-    }
-
-    // 设置图片列表
-    const setImageList = (images) => {
-      form.imageUrls = JSON.stringify(images)
-      // 实时更新详情信息
-      if (selectedNode.value && selectedNode.value.id === form.id) {
-        selectedNode.value.imageUrls = form.imageUrls
-      }
-    }
-
-    // 自定义上传
-    const handleUpload = async (options) => {
+    // 自定义上传区域图片
+    const handleRegionImageUpload = async (options) => {
       try {
         uploading.value = true
         const response = await uploadFile(options.file)
-        const currentImages = getImageList(form.imageUrls)
-        currentImages.push(response.data)
-        setImageList(currentImages)
+        form.regionImage = response.data
         ElMessage.success('图片上传成功')
+        // 实时更新详情信息
+        if (selectedNode.value && selectedNode.value.id === form.id) {
+          selectedNode.value.regionImage = form.regionImage
+        }
       } catch (error) {
         ElMessage.error('图片上传失败')
         console.error(error)
@@ -394,23 +475,13 @@ export default {
       }
     }
 
-    // 预览图片
-    const previewImages = (index) => {
-      const images = getImageList(form.imageUrls)
-      if (images.length > 0) {
-        // 使用Element Plus的图片预览功能
-        const imageUrls = images.map(img => getImageUrl(img))
-        // 这里可以触发图片预览，由于是在upload区域，我们直接点击图片即可预览
-      }
-    }
-
-    // 删除图片
-    const removeImage = (index) => {
-      const currentImages = getImageList(form.imageUrls)
-      currentImages.splice(index, 1)
-      setImageList(currentImages)
+    // 删除区域图片
+    const removeRegionImage = () => {
+      form.regionImage = ''
       // 实时更新详情信息
-      ElMessage.success('图片已删除')
+      if (selectedNode.value && selectedNode.value.id === form.id) {
+        selectedNode.value.regionImage = ''
+      }
     }
 
     // 加载组织树
@@ -427,6 +498,85 @@ export default {
     // 节点点击事件
     const handleNodeClick = (data) => {
       selectedNode.value = data
+      // 如果是街道级别，加载广告位信息
+      if (data.level === 3) {
+        loadPositionData(data.id)
+      } else {
+        // 清空广告位数据
+        positionList.value = []
+        resetPositionStats()
+      }
+    }
+
+    // 加载广告位数据
+    const loadPositionData = async (regionId) => {
+      try {
+        const response = await getPositionsByRegionId(regionId)
+        if (response.code === 200) {
+          // 处理图片数据
+          positionList.value = response.data.map(position => ({
+            ...position,
+            positionImages: parseImages(position.positionImage)
+          }))
+          // 计算统计信息
+          calculatePositionStats()
+        }
+      } catch (error) {
+        console.error('加载广告位数据失败:', error)
+        positionList.value = []
+        resetPositionStats()
+      }
+    }
+
+    // 处理图片数据
+    const parseImages = (imageData) => {
+      if (!imageData) return []
+      if (typeof imageData === 'string') {
+        try {
+          // 处理转义字符
+          const cleanData = imageData.replace(/\\/g, '')
+          return JSON.parse(cleanData)
+        } catch {
+          return [imageData] // 兼容旧的单图片格式
+        }
+      }
+      return Array.isArray(imageData) ? imageData : []
+    }
+
+    // 计算广告位统计信息
+    const calculatePositionStats = () => {
+      const total = positionList.value.length
+      const available = positionList.value.filter(p => p.applicationStatus === 'AVAILABLE' || !p.applicationStatus).length
+      const applied = positionList.value.filter(p => p.applicationStatus === 'APPLIED').length
+      const approved = positionList.value.filter(p => p.applicationStatus === 'APPROVED').length
+      
+      Object.assign(positionStats, {
+        total,
+        available,
+        applied,
+        approved
+      })
+    }
+
+    // 重置广告位统计
+    const resetPositionStats = () => {
+      Object.assign(positionStats, {
+        total: 0,
+        available: 0,
+        applied: 0,
+        approved: 0
+      })
+    }
+
+    // 获取广告位状态标签类型
+    const getPositionStatusType = (status) => {
+      const statusTypeMap = {
+        'AVAILABLE': 'success',
+        'APPLIED': 'warning',
+        'APPROVED': 'primary',
+        'REJECTED': 'info'
+      }
+      return statusTypeMap[status] || 'success'
     }
 
     // 添加根节点（省份）
@@ -436,6 +586,7 @@ export default {
       form.parentId = null
       dialogTitle.value = '添加省份'
       isEdit.value = false
+      activeTab.value = 'basic'
       dialogVisible.value = true
     }
 
@@ -445,10 +596,11 @@ export default {
       form.parentId = parentData.id
       form.level = parentData.level + 1
       
-      const levelNames = ['', '省份', '城市', '区域', '街道']
+      const levelNames = ['', '省份', '城市', '街道']
       dialogTitle.value = `添加${levelNames[form.level]}`
       
       isEdit.value = false
+      activeTab.value = 'basic'
       dialogVisible.value = true
     }
 
@@ -457,6 +609,7 @@ export default {
       Object.assign(form, data)
       dialogTitle.value = '编辑组织'
       isEdit.value = true
+      activeTab.value = 'basic'
       dialogVisible.value = true
     }
 
@@ -553,7 +706,7 @@ export default {
         level: 1,
         longitude: null,
         latitude: null,
-        imageUrls: '',
+        regionImage: '',
         description: '',
         sort: 0,
         isEnabled: true
@@ -567,12 +720,12 @@ export default {
     return {
       treeRef,
       formRef,
-      uploadRef,
       treeData,
       selectedNode,
       dialogVisible,
       isEdit,
       uploading,
+      activeTab,
       treeProps,
       form,
       dialogTitle,
@@ -587,11 +740,12 @@ export default {
       submitForm,
       resetForm,
       beforeUpload,
-      handleUpload,
-      previewImages,
-      removeImage,
-      getImageList,
-      hasPermission
+      handleRegionImageUpload,
+      removeRegionImage,
+      hasPermission,
+      positionList,
+      positionStats,
+      getPositionStatusType
     }
   }
 }
@@ -790,6 +944,12 @@ export default {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* 区域图片专用样式 */
+.uploaded-region-image {
+  width: 200px !important;
+  height: 150px !important;
+}
+
 .image-item .uploaded-image {
   width: 100%;
   height: 100%;
@@ -803,12 +963,15 @@ export default {
 
 .image-actions {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 8px;
+  right: 8px;
   display: flex;
   gap: 4px;
   opacity: 0;
   transition: opacity 0.3s;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+  padding: 4px;
 }
 
 .image-item:hover .image-actions {
@@ -873,5 +1036,122 @@ export default {
 
 .preview-image:hover {
   transform: scale(1.05);
+}
+
+/* 广告位统计样式 */
+.position-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* 广告位列表样式 */
+.position-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.position-card {
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fafafa;
+  transition: all 0.3s;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+}
+
+.position-card:hover {
+  border-color: #409eff;
+  box-shadow: 0 2px 12px rgba(64, 158, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.position-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.position-code {
+  font-weight: 600;
+  color: #409eff;
+  font-size: 14px;
+}
+
+.position-info {
+  flex: 1;
+  margin-bottom: 8px;
+}
+
+.position-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #303133;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.position-area,
+.position-coords {
+  font-size: 11px;
+  color: #909399;
+  margin-bottom: 2px;
+}
+
+.position-images {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: auto;
+}
+
+.position-thumb {
+  width: 35px;
+  height: 26px;
+  border-radius: 4px;
+  border: 1px solid #e4e7ed;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.more-images {
+  font-size: 11px;
+  color: #909399;
+  margin-left: 4px;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .position-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .position-list {
+    grid-template-columns: 1fr;
+  }
+  
+  .content-container {
+    flex-direction: column;
+    height: auto;
+  }
+  
+  .tree-container,
+  .detail-container {
+    flex: none;
+  }
+  
+  .tree-container {
+    height: 400px;
+  }
 }
 </style> 

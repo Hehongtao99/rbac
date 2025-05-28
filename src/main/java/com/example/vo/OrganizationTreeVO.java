@@ -2,6 +2,7 @@ package com.example.vo;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -19,13 +20,15 @@ public class OrganizationTreeVO {
     
     private String fullName;
     
-    private Double longitude;
-    
-    private Double latitude;
-    
-    private String imageUrls;
-    
     private String description;
+    
+    private BigDecimal longitude;
+    
+    private BigDecimal latitude;
+    
+    private String regionImage;
+    
+    private String regionType;
     
     private Integer sort;
     

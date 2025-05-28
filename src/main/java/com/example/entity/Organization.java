@@ -1,10 +1,12 @@
 package com.example.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -17,19 +19,31 @@ public class Organization {
     
     private Long parentId;
     
-    private Integer level; // 1:省 2:市 3:区 4:街道
+    private Integer level; // 1:省 2:市 3:街道
     
     private String code;
     
     private String fullName;
     
-    private Double longitude; // 经度，街道级别可用
-    
-    private Double latitude; // 纬度，街道级别可用
-    
-    private String imageUrls; // 图片URLs，JSON格式存储多张图片，街道级别可用
-    
     private String description; // 描述信息
+    
+    private BigDecimal longitude; // 经度
+    
+    private BigDecimal latitude; // 纬度
+    
+    @TableField("image_urls")
+    private String imageUrls; // 图片URLs，JSON格式存储多张图片（映射到数据库的image_urls字段）
+    
+    // 为了向后兼容，添加regionImage的getter和setter
+    public String getRegionImage() {
+        return this.imageUrls;
+    }
+    
+    public void setRegionImage(String regionImage) {
+        this.imageUrls = regionImage;
+    }
+    
+    private String regionType; // 区域类型：省、市、街道
     
     private Integer sort;
     
@@ -38,4 +52,6 @@ public class Organization {
     private LocalDateTime createTime;
     
     private LocalDateTime updateTime;
+    
+    private Integer status; // 状态：1启用 0禁用
 } 

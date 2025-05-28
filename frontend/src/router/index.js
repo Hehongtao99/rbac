@@ -6,6 +6,7 @@ import UserManagement from '../views/UserManagement.vue'
 import RoleManagement from '../views/RoleManagement.vue'
 import Profile from '../views/Profile.vue'
 import OrganizationManagement from '../views/OrganizationManagement.vue'
+import AdvertisementManagement from '../views/AdvertisementManagement.vue'
 
 const routes = [
   {
@@ -35,30 +36,38 @@ const routes = [
           title: '仪表板'
         }
       },
-              {
-          path: '/system/user',
-          name: 'UserManagement',
-          component: UserManagement,
-          meta: {
-            title: '用户管理'
-          }
-        },
-        {
-          path: '/system/role',
-          name: 'RoleManagement',
-          component: RoleManagement,
-          meta: {
-            title: '角色管理'
-          }
-        },
-        {
-          path: '/system/organization',
-          name: 'OrganizationManagement',
-          component: OrganizationManagement,
-          meta: {
-            title: '组织管理'
-          }
-        },
+      {
+        path: '/system/user',
+        name: 'UserManagement',
+        component: UserManagement,
+        meta: {
+          title: '用户管理'
+        }
+      },
+      {
+        path: '/system/role',
+        name: 'RoleManagement',
+        component: RoleManagement,
+        meta: {
+          title: '角色管理'
+        }
+      },
+      {
+        path: '/system/organization',
+        name: 'OrganizationManagement',
+        component: OrganizationManagement,
+        meta: {
+          title: '组织管理'
+        }
+      },
+      {
+        path: '/advertisement/list',
+        name: 'AdvertisementManagement',
+        component: AdvertisementManagement,
+        meta: {
+          title: '广告申请管理'
+        }
+      },
       {
         path: '/profile',
         name: 'Profile',

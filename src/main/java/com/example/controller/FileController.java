@@ -12,6 +12,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -23,7 +25,7 @@ public class FileController {
     private String uploadPath;
 
     @PostMapping("/upload")
-    public Result<String> uploadFile(@RequestParam("file") MultipartFile file) {
+    public Result<Map<String, String>> uploadFile(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {
             return Result.error("请选择要上传的文件");
         }
@@ -31,20 +33,24 @@ public class FileController {
         try {
             // 检查文件类型
             String contentType = file.getContentType();
-            if (!isImageFile(contentType)) {
-                return Result.error("只支持上传图片文件");
+            String originalFilename = file.getOriginalFilename();
+            
+            if (!isAllowedFile(contentType, originalFilename)) {
+                return Result.error("不支持的文件类型，只支持图片文件(jpg,png,gif,webp)和文档文件(pdf,doc,docx)");
             }
 
+            // 根据文件类型确定子目录
+            String subDir = isImageFile(contentType) ? "images" : "documents";
+            
             // 创建上传目录
             String datePath = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-            String uploadDir = uploadPath + "/" + datePath;
+            String uploadDir = uploadPath + "/" + subDir + "/" + datePath;
             Path uploadDirPath = Paths.get(uploadDir);
             if (!Files.exists(uploadDirPath)) {
                 Files.createDirectories(uploadDirPath);
             }
 
             // 生成唯一文件名
-            String originalFilename = file.getOriginalFilename();
             String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
             String filename = UUID.randomUUID().toString() + extension;
 
@@ -52,9 +58,15 @@ public class FileController {
             Path filePath = uploadDirPath.resolve(filename);
             Files.copy(file.getInputStream(), filePath);
 
-            // 返回文件访问路径
-            String fileUrl = "/uploads/" + datePath + "/" + filename;
-            return Result.success(fileUrl);
+            // 返回文件访问路径和原始文件名
+            String fileUrl = "/uploads/" + subDir + "/" + datePath + "/" + filename;
+            
+            Map<String, String> result = new HashMap<>();
+            result.put("url", fileUrl);
+            result.put("originalName", originalFilename);
+            result.put("size", String.valueOf(file.getSize()));
+            
+            return Result.success(result);
 
         } catch (IOException e) {
             return Result.error("文件上传失败：" + e.getMessage());
@@ -68,5 +80,27 @@ public class FileController {
                 contentType.startsWith("image/gif") ||
                 contentType.startsWith("image/webp")
         );
+    }
+    
+    private boolean isDocumentFile(String contentType, String filename) {
+        if (contentType != null) {
+            return contentType.equals("application/pdf") ||
+                   contentType.equals("application/msword") ||
+                   contentType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        }
+        
+        // 如果contentType为空，根据文件扩展名判断
+        if (filename != null) {
+            String lowerFilename = filename.toLowerCase();
+            return lowerFilename.endsWith(".pdf") ||
+                   lowerFilename.endsWith(".doc") ||
+                   lowerFilename.endsWith(".docx");
+        }
+        
+        return false;
+    }
+    
+    private boolean isAllowedFile(String contentType, String filename) {
+        return isImageFile(contentType) || isDocumentFile(contentType, filename);
     }
 } 

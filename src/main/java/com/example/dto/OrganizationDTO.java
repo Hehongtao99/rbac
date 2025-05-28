@@ -2,6 +2,8 @@ package com.example.dto;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
+
 @Data
 public class OrganizationDTO {
     private Long id;
@@ -16,13 +18,15 @@ public class OrganizationDTO {
     
     private String fullName;
     
-    private Double longitude;
-    
-    private Double latitude;
-    
-    private String imageUrls;
-    
     private String description;
+    
+    private BigDecimal longitude;
+    
+    private BigDecimal latitude;
+    
+    private String regionImage;
+    
+    private String regionType;
     
     private Integer sort;
     

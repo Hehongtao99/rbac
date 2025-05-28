@@ -47,6 +47,7 @@ public class OrganizationServiceImpl extends ServiceImpl<OrganizationMapper, Org
     public Boolean saveOrganization(OrganizationDTO dto) {
         Organization organization = new Organization();
         BeanUtils.copyProperties(dto, organization);
+        organization.setImageUrls(dto.getRegionImage());
         organization.setCreateTime(LocalDateTime.now());
         organization.setUpdateTime(LocalDateTime.now());
         organization.setIsEnabled(true);
@@ -58,6 +59,7 @@ public class OrganizationServiceImpl extends ServiceImpl<OrganizationMapper, Org
     public Boolean updateOrganization(OrganizationDTO dto) {
         Organization organization = new Organization();
         BeanUtils.copyProperties(dto, organization);
+        organization.setImageUrls(dto.getRegionImage());
         organization.setUpdateTime(LocalDateTime.now());
         
         return this.updateById(organization);
@@ -121,6 +123,7 @@ public class OrganizationServiceImpl extends ServiceImpl<OrganizationMapper, Org
     private OrganizationTreeVO entityToVO(Organization organization) {
         OrganizationTreeVO vo = new OrganizationTreeVO();
         BeanUtils.copyProperties(organization, vo);
+        vo.setRegionImage(organization.getImageUrls());
         return vo;
     }
 } 
