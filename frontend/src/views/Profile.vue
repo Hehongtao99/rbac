@@ -60,20 +60,35 @@
 
     <!-- 修改密码对话框 -->
     <el-dialog v-model="showChangePassword" title="修改密码" width="400px">
-      <el-form :model="passwordForm" label-width="100px">
-        <el-form-item label="原密码">
-          <el-input v-model="passwordForm.oldPassword" type="password" show-password />
+      <el-form :model="passwordForm" :rules="passwordRules" ref="passwordFormRef" label-width="100px">
+        <el-form-item label="原密码" prop="oldPassword">
+          <el-input 
+            v-model="passwordForm.oldPassword" 
+            type="password" 
+            show-password 
+            placeholder="请输入原密码"
+          />
         </el-form-item>
-        <el-form-item label="新密码">
-          <el-input v-model="passwordForm.newPassword" type="password" show-password />
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input 
+            v-model="passwordForm.newPassword" 
+            type="password" 
+            show-password 
+            placeholder="请输入新密码"
+          />
         </el-form-item>
-        <el-form-item label="确认密码">
-          <el-input v-model="passwordForm.confirmPassword" type="password" show-password />
+        <el-form-item label="确认密码" prop="confirmPassword">
+          <el-input 
+            v-model="passwordForm.confirmPassword" 
+            type="password" 
+            show-password 
+            placeholder="请再次输入新密码"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showChangePassword = false">取消</el-button>
-        <el-button type="primary" @click="handleChangePassword">确定</el-button>
+        <el-button @click="closePasswordDialog">取消</el-button>
+        <el-button type="primary" :loading="passwordLoading" @click="handleChangePassword">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -82,13 +97,16 @@
 <script>
 import { ref, onMounted, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getUserInfo } from '../api/auth'
+import { getUserInfo, changePassword } from '../api/auth'
+import { usePermissions } from '../stores/permission'
 
 export default {
   name: 'Profile',
   setup() {
     const userInfo = ref(null)
     const showChangePassword = ref(false)
+    const passwordLoading = ref(false)
+    const passwordFormRef = ref()
     
     const passwordForm = reactive({
       oldPassword: '',
@@ -96,9 +114,31 @@ export default {
       confirmPassword: ''
     })
 
-    // 检查按钮权限
-    const hasPermission = (permission) => {
-      return window.userButtons && window.userButtons.includes(permission)
+    // 使用响应式权限检查
+    const { hasPermission } = usePermissions()
+
+    // 密码表单验证规则
+    const passwordRules = {
+      oldPassword: [
+        { required: true, message: '请输入原密码', trigger: 'blur' }
+      ],
+      newPassword: [
+        { required: true, message: '请输入新密码', trigger: 'blur' },
+        { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
+      ],
+      confirmPassword: [
+        { required: true, message: '请确认新密码', trigger: 'blur' },
+        { 
+          validator: (rule, value, callback) => {
+            if (value !== passwordForm.newPassword) {
+              callback(new Error('两次输入密码不一致'))
+            } else {
+              callback()
+            }
+          }, 
+          trigger: 'blur' 
+        }
+      ]
     }
 
     // 获取角色类型
@@ -124,20 +164,43 @@ export default {
       }
     }
 
-    // 修改密码
-    const handleChangePassword = () => {
-      if (!passwordForm.oldPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
-        ElMessage.warning('请填写完整信息')
-        return
-      }
-      
-      if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-        ElMessage.warning('两次输入密码不一致')
-        return
-      }
-      
-      ElMessage.info('修改密码功能待实现')
+    // 关闭密码对话框
+    const closePasswordDialog = () => {
       showChangePassword.value = false
+      resetPasswordForm()
+    }
+
+    // 重置密码表单
+    const resetPasswordForm = () => {
+      passwordForm.oldPassword = ''
+      passwordForm.newPassword = ''
+      passwordForm.confirmPassword = ''
+      
+      if (passwordFormRef.value) {
+        passwordFormRef.value.clearValidate()
+      }
+    }
+
+    // 修改密码
+    const handleChangePassword = async () => {
+      try {
+        await passwordFormRef.value.validate()
+        
+        passwordLoading.value = true
+        
+        await changePassword({
+          oldPassword: passwordForm.oldPassword,
+          newPassword: passwordForm.newPassword,
+          confirmPassword: passwordForm.confirmPassword
+        })
+        
+        ElMessage.success('密码修改成功')
+        closePasswordDialog()
+      } catch (error) {
+        console.error('修改密码失败:', error)
+      } finally {
+        passwordLoading.value = false
+      }
     }
 
     onMounted(() => {
@@ -155,9 +218,13 @@ export default {
       userInfo,
       showChangePassword,
       passwordForm,
+      passwordRules,
+      passwordLoading,
+      passwordFormRef,
       hasPermission,
       getRoleType,
-      handleChangePassword
+      handleChangePassword,
+      closePasswordDialog
     }
   }
 }

@@ -1,5 +1,6 @@
 package com.example.service;
 
+import com.example.dto.ChangePasswordDTO;
 import com.example.dto.LoginDTO;
 import com.example.dto.RegisterDTO;
 import com.example.vo.LoginVO;
@@ -9,4 +10,5 @@ public interface UserService {
     LoginVO login(LoginDTO loginDTO);
     void register(RegisterDTO registerDTO);
     UserInfoVO getUserInfo(String username);
+    void changePassword(String username, ChangePasswordDTO changePasswordDTO);
 } 

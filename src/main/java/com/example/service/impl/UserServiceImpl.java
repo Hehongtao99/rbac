@@ -1,6 +1,7 @@
 package com.example.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.example.dto.ChangePasswordDTO;
 import com.example.dto.LoginDTO;
 import com.example.dto.RegisterDTO;
 import com.example.entity.Role;
@@ -18,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import com.example.util.PasswordUtil;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -146,5 +148,46 @@ public class UserServiceImpl implements UserService {
         userInfoVO.setButtons(menuService.getUserButtons(user.getId()));
         
         return userInfoVO;
+    }
+    
+    @Override
+    public void changePassword(String username, ChangePasswordDTO changePasswordDTO) {
+        // 参数校验
+        if (changePasswordDTO.getOldPassword() == null || changePasswordDTO.getOldPassword().trim().isEmpty()) {
+            throw new RuntimeException("原密码不能为空");
+        }
+        if (changePasswordDTO.getNewPassword() == null || changePasswordDTO.getNewPassword().trim().isEmpty()) {
+            throw new RuntimeException("新密码不能为空");
+        }
+        if (changePasswordDTO.getConfirmPassword() == null || changePasswordDTO.getConfirmPassword().trim().isEmpty()) {
+            throw new RuntimeException("确认密码不能为空");
+        }
+        if (!changePasswordDTO.getNewPassword().equals(changePasswordDTO.getConfirmPassword())) {
+            throw new RuntimeException("新密码与确认密码不一致");
+        }
+        
+        // 查询用户
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(User::getUsername, username);
+        User user = userMapper.selectOne(wrapper);
+        
+        if (user == null) {
+            throw new RuntimeException("用户不存在");
+        }
+        
+        // 验证原密码
+        if (!passwordUtil.matches(changePasswordDTO.getOldPassword(), user.getPassword())) {
+            throw new RuntimeException("原密码错误");
+        }
+        
+        // 检查新密码是否与原密码相同
+        if (passwordUtil.matches(changePasswordDTO.getNewPassword(), user.getPassword())) {
+            throw new RuntimeException("新密码不能与原密码相同");
+        }
+        
+        // 更新密码
+        user.setPassword(passwordUtil.encode(changePasswordDTO.getNewPassword()));
+        user.setUpdateTime(LocalDateTime.now());
+        userMapper.updateById(user);
     }
 } 

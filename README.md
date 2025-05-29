@@ -1,6 +1,6 @@
-# RBAC权限管理系统
+# 户外广告管理系统
 
-基于SpringBoot3.x + MyBatis-Plus + Vue3 + Element Plus的RBAC权限管理系统
+基于SpringBoot3.x + MyBatis-Plus + Vue3 + Element Plus的户外广告管理系统
 
 ## 技术栈
 
@@ -36,11 +36,15 @@
 - ✅ 响应式设计
 - ✅ 动画效果
 - ✅ 密码加密存储
+- ✅ 户外广告位管理
+- ✅ 广告申请审核功能
+- ✅ 组织架构管理
+- ✅ 修改密码功能
 
 ## 项目结构
 
 ```
-rbac-system/
+outdoor-ad-system/
 ├── src/main/java/com/example/          # 后端源码
 │   ├── entity/                         # 实体类
 │   ├── dto/                           # 数据传输对象

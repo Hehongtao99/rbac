@@ -1,6 +1,7 @@
 package com.example.controller;
 
 import com.example.common.Result;
+import com.example.dto.ChangePasswordDTO;
 import com.example.dto.LoginDTO;
 import com.example.dto.RegisterDTO;
 import com.example.service.UserService;
@@ -54,6 +55,24 @@ public class AuthController {
                 return Result.success(userInfo);
             }
             return Result.error(401, "未授权");
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    @PostMapping("/change-password")
+    public Result<Void> changePassword(@RequestBody ChangePasswordDTO changePasswordDTO, HttpServletRequest request) {
+        try {
+            String token = request.getHeader("Authorization");
+            if (token == null || !token.startsWith("Bearer ")) {
+                return Result.error(401, "未授权");
+            }
+            
+            token = token.substring(7);
+            String username = jwtUtil.getUsernameFromToken(token);
+            
+            userService.changePassword(username, changePasswordDTO);
+            return Result.success();
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }

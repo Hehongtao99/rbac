@@ -2,7 +2,7 @@
   <div class="login-container">
     <div class="login-box animate__animated animate__fadeInDown">
       <div class="login-header">
-        <h2>RBAC权限管理系统</h2>
+        <h2>户外广告管理系统</h2>
         <p>欢迎登录</p>
       </div>
       

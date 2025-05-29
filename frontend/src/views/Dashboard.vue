@@ -2,7 +2,7 @@
   <div class="dashboard-container">
     <div class="dashboard-header">
       <div class="header-content">
-        <h1 class="animate__animated animate__fadeInDown">欢迎来到RBAC权限管理系统</h1>
+        <h1 class="animate__animated animate__fadeInDown">欢迎来到户外广告管理系统</h1>
         <div class="user-actions">
           <el-button type="primary" @click="refreshUserInfo" :loading="loading">
             <el-icon><Refresh /></el-icon>
@@ -151,9 +151,9 @@ export default {
     const getRoleDescription = (role) => {
       switch (role) {
         case '管理员':
-          return '拥有系统的完全访问权限，可以管理用户、角色和系统设置'
+          return '拥有系统的完全访问权限，可以管理用户、角色、广告位、申请审核等所有功能'
         case '用户':
-          return '普通用户权限，可以访问基本功能和个人信息管理'
+          return '普通用户权限，可以查看广告位信息、提交广告申请和管理个人信息'
         default:
           return '未知角色'
       }
