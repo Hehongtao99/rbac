@@ -11,7 +11,7 @@
  Target Server Version : 80042 (8.0.42)
  File Encoding         : 65001
 
- Date: 28/05/2025 12:07:33
+ Date: 28/05/2025 14:30:33
 */
 
 SET NAMES utf8mb4;
@@ -54,14 +54,19 @@ CREATE TABLE `advertisement_application`  (
   INDEX `idx_region_id`(`region_id` ASC) USING BTREE,
   INDEX `idx_audit_status`(`audit_status` ASC) USING BTREE,
   INDEX `idx_apply_user_id`(`apply_user_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告申请表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 12 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '广告申请表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of advertisement_application
 -- ----------------------------
-INSERT INTO `advertisement_application` VALUES (1, 'APP2024001', 1, 11, '王府井大街东侧', '大型立柱广告', '商业广告', 20.50, 20.50, '4m×5m', 1, 'PENDING', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, '2025-05-28 02:58:25', NULL, NULL, NULL, '2025-05-28 02:58:25', '2025-05-28 02:58:25');
+INSERT INTO `advertisement_application` VALUES (1, 'APP2024001', 1, 11, '王府井大街东侧', '大型立柱广告', '商业广告', 20.50, 20.50, '4m×5m', 1, 'REJECTED', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, '2025-05-28 02:58:25', 1, '2025-05-28 12:37:16', '', '2025-05-28 02:58:25', '2025-05-28 04:37:15');
 INSERT INTO `advertisement_application` VALUES (2, 'APP2024002', 2, 11, '长安街西单路口', '楼体广告', '公益广告', 35.80, 71.60, '8m×4.5m', 2, 'APPROVED', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, '2025-05-28 02:58:25', NULL, NULL, NULL, '2025-05-28 02:58:25', '2025-05-28 02:58:25');
 INSERT INTO `advertisement_application` VALUES (3, 'APP2024003', 3, 12, '景山公园南门', '候车亭广告', '商业广告', 15.20, 15.20, '3m×5m', 1, 'REJECTED', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2, '2025-05-28 02:58:25', NULL, NULL, NULL, '2025-05-28 02:58:25', '2025-05-28 02:58:25');
+INSERT INTO `advertisement_application` VALUES (7, 'APP20250528001', 11, 11, '东华门地铁站出口广告位', '大型立柱广告', '商业广告', 12.50, 3.00, '3', 1, 'REJECTED', '/uploads/documents/2025/05/28/45e3b3a7-b36c-423b-98ed-eeff24e3c11b.docx', '/uploads/documents/2025/05/28/2c7f2f0c-5e26-41b8-9fc5-d6d28c38d882.docx', '/uploads/documents/2025/05/28/40d46eb2-44c9-4f29-bf55-c498906828bc.docx', '/uploads/documents/2025/05/28/82dc7df4-64a0-40c0-9c6b-ddeea1b864d4.docx', '/uploads/documents/2025/05/28/01748091-6177-41e9-bfcd-9cdddbeb594a.docx', '/uploads/documents/2025/05/28/47ffc641-443c-491f-8fcc-939b556f321e.docx', '/uploads/documents/2025/05/28/eeed8a49-c16f-43c3-ac11-2e2d18d5bf72.docx', 1, '2025-05-28 12:26:24', 1, '2025-05-28 12:37:13', '', '2025-05-28 04:26:24', '2025-05-28 04:37:12');
+INSERT INTO `advertisement_application` VALUES (8, 'APP20250528002', 11, 11, '东华门地铁站出口广告位', '大型立柱广告', '商业广告', 12.50, 10.00, '1', 1, 'REJECTED', '/uploads/documents/2025/05/28/f39a7a86-7ead-409d-b5eb-3a97f3444bed.docx', '/uploads/documents/2025/05/28/7731be3d-737a-4aa5-a419-16e628728d8e.docx', '/uploads/documents/2025/05/28/53220871-9021-4577-8402-ad4d3b5bb3e8.docx', '/uploads/documents/2025/05/28/4fe92d26-0ecd-475f-a9d7-bd74841d82cc.docx', '/uploads/documents/2025/05/28/89ea84aa-deef-4733-b8e8-7a7d506eb3c3.docx', '/uploads/documents/2025/05/28/1252f181-546a-442a-8022-cc23ac213227.docx', '/uploads/documents/2025/05/28/1fcac389-7b22-4ae2-a325-7afa26c605f4.docx', 1, '2025-05-28 12:34:17', 1, '2025-05-28 12:37:03', '', '2025-05-28 04:34:16', '2025-05-28 04:37:02');
+INSERT INTO `advertisement_application` VALUES (9, 'APP20250528003', 11, 11, '东华门地铁站出口广告位', '大型立柱广告', '商业广告', 12.50, 1.00, '1', 1, 'REJECTED', '', '', '', '', '', '', '', 1, '2025-05-28 13:41:04', 1, '2025-05-28 13:47:17', '', '2025-05-28 05:41:04', '2025-05-28 05:47:17');
+INSERT INTO `advertisement_application` VALUES (10, 'APP20250528004', 11, 11, '东华门地铁站出口广告位', '大型立柱广告', '商业广告', 12.50, 1.00, '20', 1, 'PENDING', '', '', '', '', '', '', '', 1, '2025-05-28 13:50:20', NULL, NULL, NULL, '2025-05-28 05:50:19', '2025-05-28 05:50:19');
+INSERT INTO `advertisement_application` VALUES (11, 'APP20250528005', 1, 11, '王府井大街东侧', '楼体广告', '商业广告', 20.50, 33.00, '3', 1, 'APPROVED', '', '', '', '', '', '', '', 1, '2025-05-28 14:14:44', 1, '2025-05-28 14:14:50', '', '2025-05-28 06:14:43', '2025-05-28 06:14:50');
 
 -- ----------------------------
 -- Table structure for advertisement_position
@@ -72,7 +77,6 @@ CREATE TABLE `advertisement_position`  (
   `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '广告位编号',
   `position_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '广告位置',
   `area` decimal(10, 2) NOT NULL COMMENT '面积（平方米）',
-  `ad_nature` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '广告性质',
   `region_id` bigint NOT NULL COMMENT '区域ID（关联organization表）',
   `longitude` decimal(10, 6) NULL DEFAULT NULL COMMENT '地图点位经度',
   `latitude` decimal(10, 6) NULL DEFAULT NULL COMMENT '地图点位纬度',
@@ -81,7 +85,7 @@ CREATE TABLE `advertisement_position`  (
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `position_images` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT '广告位多图URLs，JSON格式存储',
-  `application_status` VARCHAR(20) DEFAULT 'AVAILABLE' COMMENT '申请状态：AVAILABLE-可申请,APPLIED-已申请,APPROVED-已通过,REJECTED-已拒绝',
+  `application_status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT 'AVAILABLE' COMMENT '申请状态：AVAILABLE-可申请,APPLIED-已申请,APPROVED-已通过,REJECTED-已拒绝',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_code`(`code` ASC) USING BTREE,
   INDEX `idx_region_id`(`region_id` ASC) USING BTREE
@@ -90,44 +94,26 @@ CREATE TABLE `advertisement_position`  (
 -- ----------------------------
 -- Records of advertisement_position
 -- ----------------------------
-INSERT INTO `advertisement_position` VALUES (1, 'AD001', '王府井大街东侧', 20.50, '商业广告', 11, 116.403414, 39.918695, '/uploads/positions/ad001.jpg', 1, '2025-05-28 02:58:25', '2025-05-28 02:58:25', NULL, 'AVAILABLE');
-INSERT INTO `advertisement_position` VALUES (2, 'AD002', '长安街西单路口', 35.80, '公益广告', 11, 116.375833, 39.906944, '/uploads/positions/ad002.jpg', 1, '2025-05-28 02:58:25', '2025-05-28 02:58:25', NULL, 'AVAILABLE');
-INSERT INTO `advertisement_position` VALUES (3, 'AD003', '景山公园南门', 15.20, '商业广告', 12, 116.395833, 39.922500, '/uploads/positions/ad003.jpg', 1, '2025-05-28 02:58:25', '2025-05-28 02:58:25', NULL, 'AVAILABLE');
-INSERT INTO `advertisement_position` VALUES (4, 'AD004', '什刹海西岸', 28.60, '旅游宣传', 13, 116.383333, 39.936111, '/uploads/positions/ad004.jpg', 1, '2025-05-28 02:58:25', '2025-05-28 02:58:25', NULL, 'AVAILABLE');
-INSERT INTO `advertisement_position` VALUES (5, 'AD005', '西长安街政府大楼', 45.00, '政府公告', 14, 116.366667, 39.906667, '/uploads/positions/ad005.jpg', 1, '2025-05-28 02:58:25', '2025-05-28 02:58:25', NULL, 'AVAILABLE');
-INSERT INTO `advertisement_position` VALUES (6, 'AD001', '王府井大街东侧', 20.50, '商业广告', 11, 116.403414, 39.918695, '/uploads/positions/ad001.jpg', 1, '2025-05-28 03:05:35', '2025-05-28 03:05:35', NULL, 'AVAILABLE');
-INSERT INTO `advertisement_position` VALUES (7, 'AD002', '长安街西单路口', 35.80, '公益广告', 11, 116.375833, 39.906944, '/uploads/positions/ad002.jpg', 1, '2025-05-28 03:05:35', '2025-05-28 03:05:35', NULL, 'AVAILABLE');
-INSERT INTO `advertisement_position` VALUES (8, 'AD003', '景山公园南门', 15.20, '商业广告', 12, 116.395833, 39.922500, '/uploads/positions/ad003.jpg', 1, '2025-05-28 03:05:35', '2025-05-28 03:05:35', NULL, 'AVAILABLE');
-INSERT INTO `advertisement_position` VALUES (9, 'AD004', '什刹海西岸', 28.60, '旅游宣传', 13, 116.383333, 39.936111, '/uploads/positions/ad004.jpg', 1, '2025-05-28 03:05:35', '2025-05-28 03:05:35', NULL, 'AVAILABLE');
-INSERT INTO `advertisement_position` VALUES (10, 'AD005', '西长安街政府大楼', 45.00, '政府公告', 14, 116.366667, 39.906667, '/uploads/positions/ad005.jpg', 1, '2025-05-28 03:05:35', '2025-05-28 03:05:35', NULL, 'AVAILABLE');
-INSERT INTO `advertisement_position` VALUES (11, 'AD001', '东华门地铁站出口广告位', 12.50, '商业广告', 11, 116.403500, 39.918700, '[\"/uploads/2025/05/28/063133d0-f76a-46cc-ac60-3212286a5ec7.jpg\",\"/uploads/2025/05/28/fc25ebe2-401f-412a-a890-d7c157a2135a.jpg\",\"/uploads/2025/05/28/ed6d660f-97f3-4652-b4c3-7b69c1f7f215.jpg\"]', 1, '2025-05-28 03:28:04', '2025-05-28 11:57:26', NULL, 'AVAILABLE');
-INSERT INTO `advertisement_position` VALUES (12, 'AD002', '东华门商业街LED屏', 25.00, '商业广告', 11, 116.403200, 39.918500, '/uploads/positions/donghuamen_ad2.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL, 'AVAILABLE');
-INSERT INTO `advertisement_position` VALUES (13, 'AD003', '景山公园南门宣传栏', 8.00, '公益广告', 12, 116.395700, 39.928200, '/uploads/positions/jingshan_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL, 'AVAILABLE');
-INSERT INTO `advertisement_position` VALUES (14, 'AD004', '什刹海酒吧街广告牌', 15.00, '旅游宣传', 13, 116.385600, 39.937600, '/uploads/positions/shichahai_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL, 'AVAILABLE');
-INSERT INTO `advertisement_position` VALUES (15, 'AD005', '西长安街政府公告栏', 6.00, '政府公告', 14, 116.366500, 39.906300, '/uploads/positions/xichanganjie_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL, 'AVAILABLE');
-INSERT INTO `advertisement_position` VALUES (16, 'AD006', '三里屯太古里户外屏', 30.00, '商业广告', 15, 116.447500, 39.936200, '/uploads/positions/sanlitun_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL, 'AVAILABLE');
-INSERT INTO `advertisement_position` VALUES (17, 'AD007', '建国门外CBD广告塔', 45.00, '商业广告', 16, 116.436200, 39.909900, '/uploads/positions/jianguomenwai_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL, 'AVAILABLE');
-INSERT INTO `advertisement_position` VALUES (18, 'AD008', '南京路步行街大屏', 40.00, '商业广告', 17, 121.485400, 31.240100, '/uploads/positions/nanjingdonglu_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL, 'AVAILABLE');
-INSERT INTO `advertisement_position` VALUES (1, 'AD001', '王府井大街东侧', 20.50, '商业广告', 11, 116.403414, 39.918695, '/uploads/positions/ad001.jpg', 1, '2025-05-28 02:58:25', '2025-05-28 02:58:25', NULL);
-INSERT INTO `advertisement_position` VALUES (2, 'AD002', '长安街西单路口', 35.80, '公益广告', 11, 116.375833, 39.906944, '/uploads/positions/ad002.jpg', 1, '2025-05-28 02:58:25', '2025-05-28 02:58:25', NULL);
-INSERT INTO `advertisement_position` VALUES (3, 'AD003', '景山公园南门', 15.20, '商业广告', 12, 116.395833, 39.922500, '/uploads/positions/ad003.jpg', 1, '2025-05-28 02:58:25', '2025-05-28 02:58:25', NULL);
-INSERT INTO `advertisement_position` VALUES (4, 'AD004', '什刹海西岸', 28.60, '旅游宣传', 13, 116.383333, 39.936111, '/uploads/positions/ad004.jpg', 1, '2025-05-28 02:58:25', '2025-05-28 02:58:25', NULL);
-INSERT INTO `advertisement_position` VALUES (5, 'AD005', '西长安街政府大楼', 45.00, '政府公告', 14, 116.366667, 39.906667, '/uploads/positions/ad005.jpg', 1, '2025-05-28 02:58:25', '2025-05-28 02:58:25', NULL);
-INSERT INTO `advertisement_position` VALUES (6, 'AD001', '王府井大街东侧', 20.50, '商业广告', 11, 116.403414, 39.918695, '/uploads/positions/ad001.jpg', 1, '2025-05-28 03:05:35', '2025-05-28 03:05:35', NULL);
-INSERT INTO `advertisement_position` VALUES (7, 'AD002', '长安街西单路口', 35.80, '公益广告', 11, 116.375833, 39.906944, '/uploads/positions/ad002.jpg', 1, '2025-05-28 03:05:35', '2025-05-28 03:05:35', NULL);
-INSERT INTO `advertisement_position` VALUES (8, 'AD003', '景山公园南门', 15.20, '商业广告', 12, 116.395833, 39.922500, '/uploads/positions/ad003.jpg', 1, '2025-05-28 03:05:35', '2025-05-28 03:05:35', NULL);
-INSERT INTO `advertisement_position` VALUES (9, 'AD004', '什刹海西岸', 28.60, '旅游宣传', 13, 116.383333, 39.936111, '/uploads/positions/ad004.jpg', 1, '2025-05-28 03:05:35', '2025-05-28 03:05:35', NULL);
-INSERT INTO `advertisement_position` VALUES (10, 'AD005', '西长安街政府大楼', 45.00, '政府公告', 14, 116.366667, 39.906667, '/uploads/positions/ad005.jpg', 1, '2025-05-28 03:05:35', '2025-05-28 03:05:35', NULL);
-INSERT INTO `advertisement_position` VALUES (11, 'AD001', '东华门地铁站出口广告位', 12.50, '商业广告', 11, 116.403500, 39.918700, '[\"/uploads/2025/05/28/063133d0-f76a-46cc-ac60-3212286a5ec7.jpg\",\"/uploads/2025/05/28/fc25ebe2-401f-412a-a890-d7c157a2135a.jpg\",\"/uploads/2025/05/28/ed6d660f-97f3-4652-b4c3-7b69c1f7f215.jpg\"]', 1, '2025-05-28 03:28:04', '2025-05-28 11:57:26', NULL);
-INSERT INTO `advertisement_position` VALUES (12, 'AD002', '东华门商业街LED屏', 25.00, '商业广告', 11, 116.403200, 39.918500, '/uploads/positions/donghuamen_ad2.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL);
-INSERT INTO `advertisement_position` VALUES (13, 'AD003', '景山公园南门宣传栏', 8.00, '公益广告', 12, 116.395700, 39.928200, '/uploads/positions/jingshan_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL);
-INSERT INTO `advertisement_position` VALUES (14, 'AD004', '什刹海酒吧街广告牌', 15.00, '旅游宣传', 13, 116.385600, 39.937600, '/uploads/positions/shichahai_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL);
-INSERT INTO `advertisement_position` VALUES (15, 'AD005', '西长安街政府公告栏', 6.00, '政府公告', 14, 116.366500, 39.906300, '/uploads/positions/xichanganjie_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL);
-INSERT INTO `advertisement_position` VALUES (16, 'AD006', '三里屯太古里户外屏', 30.00, '商业广告', 15, 116.447500, 39.936200, '/uploads/positions/sanlitun_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL);
-INSERT INTO `advertisement_position` VALUES (17, 'AD007', '建国门外CBD广告塔', 45.00, '商业广告', 16, 116.436200, 39.909900, '/uploads/positions/jianguomenwai_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL);
-INSERT INTO `advertisement_position` VALUES (18, 'AD008', '南京路步行街大屏', 40.00, '商业广告', 17, 121.485400, 31.240100, '/uploads/positions/nanjingdonglu_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL);
-INSERT INTO `advertisement_position` VALUES (19, 'AD009', '豫园景区指示牌', 10.00, '旅游宣传', 18, 121.492700, 31.227900, '/uploads/positions/yuyuan_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL);
-INSERT INTO `advertisement_position` VALUES (20, 'AD010', '徐家汇商圈LED墙', 35.00, '商业广告', 19, 121.435400, 31.196300, '/uploads/positions/xujiahui_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL);
+INSERT INTO `advertisement_position` VALUES (1, 'AD001', '王府井大街东侧', 20.50, 11, 116.403414, 39.918695, '/uploads/positions/ad001.jpg', 1, '2025-05-28 02:58:25', '2025-05-28 02:58:25', NULL, 'APPROVED');
+INSERT INTO `advertisement_position` VALUES (2, 'AD002', '长安街西单路口', 35.80, 11, 116.375833, 39.906944, '/uploads/positions/ad002.jpg', 1, '2025-05-28 02:58:25', '2025-05-28 02:58:25', NULL, 'AVAILABLE');
+INSERT INTO `advertisement_position` VALUES (3, 'AD003', '景山公园南门', 15.20, 12, 116.395833, 39.922500, '/uploads/positions/ad003.jpg', 1, '2025-05-28 02:58:25', '2025-05-28 02:58:25', NULL, 'AVAILABLE');
+INSERT INTO `advertisement_position` VALUES (4, 'AD004', '什刹海西岸', 28.60, 13, 116.383333, 39.936111, '/uploads/positions/ad004.jpg', 1, '2025-05-28 02:58:25', '2025-05-28 02:58:25', NULL, 'AVAILABLE');
+INSERT INTO `advertisement_position` VALUES (5, 'AD005', '西长安街政府大楼', 45.00, 14, 116.366667, 39.906667, '/uploads/positions/ad005.jpg', 1, '2025-05-28 02:58:25', '2025-05-28 02:58:25', NULL, 'AVAILABLE');
+INSERT INTO `advertisement_position` VALUES (6, 'AD001', '王府井大街东侧', 20.50, 11, 116.403414, 39.918695, '/uploads/positions/ad001.jpg', 1, '2025-05-28 03:05:35', '2025-05-28 03:05:35', NULL, 'AVAILABLE');
+INSERT INTO `advertisement_position` VALUES (7, 'AD002', '长安街西单路口', 35.80, 11, 116.375833, 39.906944, '/uploads/positions/ad002.jpg', 1, '2025-05-28 03:05:35', '2025-05-28 03:05:35', NULL, 'AVAILABLE');
+INSERT INTO `advertisement_position` VALUES (8, 'AD003', '景山公园南门', 15.20, 12, 116.395833, 39.922500, '/uploads/positions/ad003.jpg', 1, '2025-05-28 03:05:35', '2025-05-28 03:05:35', NULL, 'AVAILABLE');
+INSERT INTO `advertisement_position` VALUES (9, 'AD004', '什刹海西岸', 28.60, 13, 116.383333, 39.936111, '/uploads/positions/ad004.jpg', 1, '2025-05-28 03:05:35', '2025-05-28 03:05:35', NULL, 'AVAILABLE');
+INSERT INTO `advertisement_position` VALUES (10, 'AD005', '西长安街政府大楼', 45.00, 14, 116.366667, 39.906667, '/uploads/positions/ad005.jpg', 1, '2025-05-28 03:05:35', '2025-05-28 03:05:35', NULL, 'AVAILABLE');
+INSERT INTO `advertisement_position` VALUES (11, 'AD001', '东华门地铁站出口广告位', 12.50, 11, 116.403500, 39.918700, '[\"/uploads/2025/05/28/063133d0-f76a-46cc-ac60-3212286a5ec7.jpg\",\"/uploads/2025/05/28/fc25ebe2-401f-412a-a890-d7c157a2135a.jpg\",\"/uploads/2025/05/28/ed6d660f-97f3-4652-b4c3-7b69c1f7f215.jpg\"]', 1, '2025-05-28 03:28:04', '2025-05-28 11:57:26', NULL, 'APPLIED');
+INSERT INTO `advertisement_position` VALUES (12, 'AD002', '东华门商业街LED屏', 25.00, 11, 116.403200, 39.918500, '/uploads/positions/donghuamen_ad2.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL, 'AVAILABLE');
+INSERT INTO `advertisement_position` VALUES (13, 'AD003', '景山公园南门宣传栏', 8.00, 12, 116.395700, 39.928200, '/uploads/positions/jingshan_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL, 'AVAILABLE');
+INSERT INTO `advertisement_position` VALUES (14, 'AD004', '什刹海酒吧街广告牌', 15.00, 13, 116.385600, 39.937600, '/uploads/positions/shichahai_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL, 'AVAILABLE');
+INSERT INTO `advertisement_position` VALUES (15, 'AD005', '西长安街政府公告栏', 6.00, 14, 116.366500, 39.906300, '/uploads/positions/xichanganjie_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL, 'AVAILABLE');
+INSERT INTO `advertisement_position` VALUES (16, 'AD006', '三里屯太古里户外屏', 30.00, 15, 116.447500, 39.936200, '/uploads/positions/sanlitun_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL, 'AVAILABLE');
+INSERT INTO `advertisement_position` VALUES (17, 'AD007', '建国门外CBD广告塔', 45.00, 16, 116.436200, 39.909900, '/uploads/positions/jianguomenwai_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL, 'AVAILABLE');
+INSERT INTO `advertisement_position` VALUES (18, 'AD008', '南京路步行街大屏', 40.00, 17, 121.485400, 31.240100, '/uploads/positions/nanjingdonglu_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL, 'AVAILABLE');
+INSERT INTO `advertisement_position` VALUES (19, 'AD009', '豫园景区指示牌', 10.00, 18, 121.492700, 31.227900, '/uploads/positions/yuyuan_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL, 'AVAILABLE');
+INSERT INTO `advertisement_position` VALUES (20, 'AD010', '徐家汇商圈LED墙', 35.00, 19, 121.435400, 31.196300, '/uploads/positions/xujiahui_ad1.jpg', 1, '2025-05-28 03:28:04', '2025-05-28 03:28:04', NULL, 'AVAILABLE');
 
 -- ----------------------------
 -- Table structure for organization
@@ -231,7 +217,6 @@ INSERT INTO `sys_menu` VALUES (28, '申请列表', 'advertisement-list', 27, 'ME
 INSERT INTO `sys_menu` VALUES (29, '新增申请', 'advertisement:add', 28, 'BUTTON', '', '', '', 1, 1, '新增广告申请按钮', '2025-05-28 03:05:35', '2025-05-28 03:05:35', 0);
 INSERT INTO `sys_menu` VALUES (30, '查看详情', 'advertisement:view', 28, 'BUTTON', '', '', '', 2, 1, '查看申请详情按钮', '2025-05-28 03:05:35', '2025-05-28 03:05:35', 0);
 INSERT INTO `sys_menu` VALUES (31, '审核申请', 'advertisement:audit', 28, 'BUTTON', '', '', '', 3, 1, '审核申请按钮', '2025-05-28 03:05:35', '2025-05-28 03:05:35', 0);
-INSERT INTO `sys_menu` VALUES (32, '申请管理', 'advertisement-application', 27, 'MENU', '/advertisement/applications', 'advertisement/AdvertisementManagement', 'form', 1, 1, '广告申请管理', '2025-05-28 03:35:04', '2025-05-28 03:35:04', 0);
 
 -- ----------------------------
 -- Table structure for sys_role
