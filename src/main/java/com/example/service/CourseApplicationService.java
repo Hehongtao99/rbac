@@ -4,9 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.entity.CourseApplication;
 import com.example.entity.CourseTemplate;
+import com.example.entity.User;
 import com.example.mapper.CourseApplicationMapper;
 import com.example.mapper.CourseTemplateMapper;
 import com.example.common.Result;
+import com.example.util.UserContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -23,31 +25,57 @@ public class CourseApplicationService {
     
     @Autowired
     private CourseTemplateMapper courseTemplateMapper;
+    
+    @Autowired
+    private UserContextUtil userContextUtil;
 
     public Result<Object> getApplicationList(Integer page, Integer size, String keyword) {
-        Page<CourseApplication> pageObj = new Page<>(page, size);
-        LambdaQueryWrapper<CourseApplication> wrapper = new LambdaQueryWrapper<>();
+        System.out.println("=== getApplicationList 开始 ===");
         
-        if (StringUtils.hasText(keyword)) {
-            wrapper.like(CourseApplication::getCourseName, keyword)
-                   .or()
-                   .like(CourseApplication::getTeacherName, keyword);
+        try {
+            Page<CourseApplication> pageObj = new Page<>(page, size);
+            LambdaQueryWrapper<CourseApplication> wrapper = new LambdaQueryWrapper<>();
+            
+            if (StringUtils.hasText(keyword)) {
+                wrapper.like(CourseApplication::getCourseName, keyword)
+                       .or()
+                       .like(CourseApplication::getTeacherName, keyword);
+            }
+            
+            // 从JWT获取当前登录用户信息
+            User currentUser = userContextUtil.getCurrentUser();
+            if (currentUser == null) {
+                System.err.println("getApplicationList: 无法获取当前用户信息");
+                return Result.error("获取用户信息失败，请重新登录");
+            }
+            
+            Long currentUserId = currentUser.getId();
+            System.out.println("getApplicationList: 当前用户ID = " + currentUserId);
+            System.out.println("getApplicationList: 当前用户名 = " + currentUser.getUsername());
+            
+            // 只查询当前教师的申请
+            wrapper.eq(CourseApplication::getTeacherId, currentUserId);
+            wrapper.orderByDesc(CourseApplication::getCreateTime);
+            
+            System.out.println("getApplicationList: 执行查询...");
+            Page<CourseApplication> result = courseApplicationMapper.selectPage(pageObj, wrapper);
+            
+            System.out.println("getApplicationList: 查询结果总数 = " + result.getTotal());
+            System.out.println("getApplicationList: 当前页记录数 = " + result.getRecords().size());
+            
+            Map<String, Object> data = new HashMap<>();
+            data.put("records", result.getRecords());
+            data.put("total", result.getTotal());
+            data.put("current", result.getCurrent());
+            data.put("size", result.getSize());
+            
+            System.out.println("=== getApplicationList 结束 ===");
+            return Result.success(data);
+        } catch (Exception e) {
+            System.err.println("getApplicationList: 发生异常 - " + e.getMessage());
+            e.printStackTrace();
+            return Result.error("获取申请列表失败：" + e.getMessage());
         }
-        
-        // 只查询当前教师的申请（这里简化处理，实际应该从登录信息获取）
-        // wrapper.eq(CourseApplication::getTeacherId, getCurrentUserId());
-        
-        wrapper.orderByDesc(CourseApplication::getCreateTime);
-        
-        Page<CourseApplication> result = courseApplicationMapper.selectPage(pageObj, wrapper);
-        
-        Map<String, Object> data = new HashMap<>();
-        data.put("records", result.getRecords());
-        data.put("total", result.getTotal());
-        data.put("current", result.getCurrent());
-        data.put("size", result.getSize());
-        
-        return Result.success(data);
     }
 
     public Result<Object> getApplicationListForAdmin(Integer page, Integer size, String keyword) {
@@ -82,18 +110,28 @@ public class CourseApplicationService {
                 if (template != null) {
                     application.setCourseName(template.getTemplateName());
                     application.setCourseHours(template.getCourseHours());
+                    application.setRemainingHours(template.getCourseHours()); // 设置剩余课时为总课时
                     application.setAcademicYear(template.getAcademicYear());
                     application.setSemester(template.getSemester());
                     application.setMaxStudents(template.getMaxStudents());
                 }
             }
             
+            // 如果没有从模板获取课时，确保剩余课时不为空
+            if (application.getRemainingHours() == null && application.getCourseHours() != null) {
+                application.setRemainingHours(application.getCourseHours());
+            }
+            
             application.setStatus(0); // 待审核
             application.setApplyTime(LocalDateTime.now());
-            // 设置申请教师信息（这里简化处理，实际应该从登录信息获取）
-            if (application.getTeacherId() == null) {
-                application.setTeacherId(1L);
-                application.setTeacherName("当前教师");
+            
+            // 获取当前登录用户信息作为申请教师
+            User currentUser = userContextUtil.getCurrentUser();
+            if (currentUser != null) {
+                application.setTeacherId(currentUser.getId());
+                application.setTeacherName(currentUser.getNickname() != null ? currentUser.getNickname() : currentUser.getUsername());
+            } else {
+                return Result.error("获取用户信息失败，请重新登录");
             }
             
             courseApplicationMapper.insert(application);
@@ -114,6 +152,12 @@ public class CourseApplicationService {
                 return Result.error("只能修改待审核状态的申请");
             }
             
+            // 验证当前用户是否为申请人
+            Long currentUserId = userContextUtil.getCurrentUserId();
+            if (currentUserId == null || !currentUserId.equals(existing.getTeacherId())) {
+                return Result.error("只能修改自己的申请");
+            }
+            
             courseApplicationMapper.updateById(application);
             return Result.success(application);
         } catch (Exception e) {
@@ -131,9 +175,21 @@ public class CourseApplicationService {
             application.setStatus(status);
             application.setReviewComment(reviewComment);
             application.setReviewTime(LocalDateTime.now());
-            // 设置审核人信息（这里简化处理，实际应该从登录信息获取）
-            application.setReviewerId(1L);
-            application.setReviewerName("管理员");
+            
+            // 获取当前审核人信息
+            User currentUser = userContextUtil.getCurrentUser();
+            if (currentUser != null) {
+                application.setReviewerId(currentUser.getId());
+                application.setReviewerName(currentUser.getNickname() != null ? currentUser.getNickname() : currentUser.getUsername());
+            } else {
+                application.setReviewerId(1L);
+                application.setReviewerName("管理员");
+            }
+            
+            // 如果审核通过，确保剩余课时正确
+            if (status == 1 && application.getRemainingHours() == null) {
+                application.setRemainingHours(application.getCourseHours());
+            }
             
             courseApplicationMapper.updateById(application);
             
@@ -153,6 +209,12 @@ public class CourseApplicationService {
             
             if (application.getStatus() != 0) {
                 return Result.error("只能删除待审核状态的申请");
+            }
+            
+            // 验证当前用户是否为申请人
+            Long currentUserId = userContextUtil.getCurrentUserId();
+            if (currentUserId == null || !currentUserId.equals(application.getTeacherId())) {
+                return Result.error("只能删除自己的申请");
             }
             
             courseApplicationMapper.deleteById(id);

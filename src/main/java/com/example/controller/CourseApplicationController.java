@@ -3,10 +3,14 @@ package com.example.controller;
 import com.example.entity.CourseApplication;
 import com.example.service.CourseApplicationService;
 import com.example.common.Result;
+import com.example.mapper.CourseApplicationMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 
 @RestController
 @RequestMapping("/api/course-applications")
@@ -14,6 +18,9 @@ public class CourseApplicationController {
 
     @Autowired
     private CourseApplicationService courseApplicationService;
+
+    @Autowired
+    private CourseApplicationMapper courseApplicationMapper;
 
     @GetMapping
     public Result<Object> getApplicationList(
@@ -57,5 +64,31 @@ public class CourseApplicationController {
     @GetMapping("/{id}")
     public Result<Object> getApplicationById(@PathVariable Long id) {
         return courseApplicationService.getApplicationById(id);
+    }
+
+    @GetMapping("/debug/all")
+    public Result<Object> getAllApplicationsForDebug() {
+        try {
+            LambdaQueryWrapper<CourseApplication> wrapper = new LambdaQueryWrapper<>();
+            wrapper.orderByDesc(CourseApplication::getCreateTime);
+            List<CourseApplication> allApplications = courseApplicationMapper.selectList(wrapper);
+            
+            System.out.println("=== 调试：所有申请记录 ===");
+            System.out.println("总记录数: " + allApplications.size());
+            for (CourseApplication app : allApplications) {
+                System.out.println("ID: " + app.getId() + 
+                                 ", 课程: " + app.getCourseName() + 
+                                 ", 教师ID: " + app.getTeacherId() + 
+                                 ", 教师名: " + app.getTeacherName() + 
+                                 ", 状态: " + app.getStatus());
+            }
+            System.out.println("=== 调试结束 ===");
+            
+            return Result.success(allApplications);
+        } catch (Exception e) {
+            System.err.println("调试查询出错: " + e.getMessage());
+            e.printStackTrace();
+            return Result.error("调试查询失败: " + e.getMessage());
+        }
     }
 } 

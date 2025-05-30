@@ -42,7 +42,8 @@ public class CourseTemplateService {
         return Result.success(data);
     }
 
-    public Result<Object> getEnabledTemplateList(String keyword) {
+    public Result<Object> getEnabledTemplateList(Integer page, Integer size, String keyword, String academicYear, String semester) {
+        Page<CourseTemplate> pageObj = new Page<>(page, size);
         LambdaQueryWrapper<CourseTemplate> wrapper = new LambdaQueryWrapper<>();
         
         if (StringUtils.hasText(keyword)) {
@@ -51,11 +52,26 @@ public class CourseTemplateService {
                    .like(CourseTemplate::getDescription, keyword);
         }
         
+        if (StringUtils.hasText(academicYear)) {
+            wrapper.eq(CourseTemplate::getAcademicYear, academicYear);
+        }
+        
+        if (StringUtils.hasText(semester)) {
+            wrapper.eq(CourseTemplate::getSemester, semester);
+        }
+        
         wrapper.eq(CourseTemplate::getStatus, 1)
                .orderByDesc(CourseTemplate::getCreateTime);
         
-        List<CourseTemplate> templates = courseTemplateMapper.selectList(wrapper);
-        return Result.success(templates);
+        Page<CourseTemplate> result = courseTemplateMapper.selectPage(pageObj, wrapper);
+        
+        Map<String, Object> data = new HashMap<>();
+        data.put("records", result.getRecords());
+        data.put("total", result.getTotal());
+        data.put("current", result.getCurrent());
+        data.put("size", result.getSize());
+        
+        return Result.success(data);
     }
 
     public Result<Object> createTemplate(CourseTemplate template) {

@@ -22,8 +22,13 @@ public class CourseTemplateController {
     }
 
     @GetMapping("/enabled")
-    public Result<Object> getEnabledTemplateList(@RequestParam(required = false) String keyword) {
-        return courseTemplateService.getEnabledTemplateList(keyword);
+    public Result<Object> getEnabledTemplateList(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String academicYear,
+            @RequestParam(required = false) String semester) {
+        return courseTemplateService.getEnabledTemplateList(page, size, keyword, academicYear, semester);
     }
 
     @PostMapping

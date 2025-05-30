@@ -136,7 +136,7 @@
 <script>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import axios from 'axios'
+import request from '../../utils/request'
 
 export default {
   name: 'CourseApplicationReview',
@@ -160,16 +160,18 @@ export default {
 
     const loadApplications = async () => {
       try {
-        const response = await axios.get('/api/course-applications/admin', {
+        const response = await request({
+          url: '/course-applications/admin',
+          method: 'get',
           params: {
             page: currentPage.value,
             size: pageSize.value,
             keyword: searchKeyword.value
           }
         })
-        if (response.data.code === 200) {
-          applicationList.value = response.data.data.records || []
-          total.value = response.data.data.total || 0
+        if (response.code === 200) {
+          applicationList.value = response.data.records || []
+          total.value = response.data.total || 0
         }
       } catch (error) {
         console.error('加载申请列表失败:', error)
@@ -208,17 +210,21 @@ export default {
         await reviewFormRef.value.validate()
         
         const status = reviewType.value === 'approve' ? 1 : 2
-        const response = await axios.put(`/api/course-applications/${currentApplication.value.id}/review`, {
-          status,
-          reviewComment: reviewForm.reviewComment
+        const response = await request({
+          url: `/course-applications/${currentApplication.value.id}/review`,
+          method: 'put',
+          data: {
+            status,
+            reviewComment: reviewForm.reviewComment
+          }
         })
         
-        if (response.data.code === 200) {
+        if (response.code === 200) {
           ElMessage.success(reviewType.value === 'approve' ? '申请已通过' : '申请已拒绝')
           reviewDialogVisible.value = false
           loadApplications()
         } else {
-          ElMessage.error(response.data.message)
+          ElMessage.error(response.message)
         }
       } catch (error) {
         console.error('审核失败:', error)
@@ -268,9 +274,9 @@ export default {
       reviewDialogVisible,
       reviewType,
       currentApplication,
+      reviewFormRef,
       applicationDetail,
       reviewForm,
-      reviewFormRef,
       loadApplications,
       searchApplications,
       viewApplication,

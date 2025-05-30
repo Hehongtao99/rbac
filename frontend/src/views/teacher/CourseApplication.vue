@@ -1,444 +1,335 @@
 <template>
   <div class="course-application">
-    <div class="header">
-      <h2>申请开课</h2>
-      <div class="tabs">
-        <el-button 
-          :type="activeTab === 'templates' ? 'primary' : ''"
-          @click="activeTab = 'templates'"
-        >
-          课程模板
-        </el-button>
-        <el-button 
-          :type="activeTab === 'applications' ? 'primary' : ''"
-          @click="activeTab = 'applications'"
-        >
-          我的申请
-        </el-button>
-      </div>
-    </div>
+    <el-card class="box-card">
+      <template #header>
+        <div class="card-header">
+          <span>申请开课</span>
+          <div class="header-controls">
+            <el-button type="success" @click="goToMyApplications">
+              <el-icon><Document /></el-icon>
+              查看我的申请
+            </el-button>
+          </div>
+        </div>
+      </template>
 
-    <!-- 课程模板列表 -->
-    <div v-if="activeTab === 'templates'">
-      <div class="search-box" style="margin-bottom: 20px;">
-        <el-input
-          v-model="templateSearchKeyword"
-          placeholder="搜索课程模板"
-          style="width: 300px; margin-right: 10px"
-          clearable
-          @keyup.enter="searchTemplates"
-        />
-        <el-button type="primary" @click="searchTemplates">搜索</el-button>
+      <!-- 搜索框 -->
+      <div class="search-container">
+        <el-form :inline="true" :model="searchForm" class="demo-form-inline">
+          <el-form-item label="课程名称">
+            <el-input
+              v-model="searchForm.keyword"
+              placeholder="搜索课程模板"
+              clearable
+              @keyup.enter="searchTemplates"
+              style="width: 200px;">
+            </el-input>
+          </el-form-item>
+          <el-form-item label="学年">
+            <el-select v-model="searchForm.academicYear" placeholder="选择学年" clearable @change="searchTemplates">
+              <el-option label="2024-2025" value="2024-2025"></el-option>
+              <el-option label="2023-2024" value="2023-2024"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="学期">
+            <el-select v-model="searchForm.semester" placeholder="选择学期" clearable @change="searchTemplates">
+              <el-option label="第一学期" value="第一学期"></el-option>
+              <el-option label="第二学期" value="第二学期"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="searchTemplates">查询</el-button>
+            <el-button @click="resetSearch">重置</el-button>
+          </el-form-item>
+        </el-form>
       </div>
 
-      <el-table :data="templateList" border style="width: 100%">
-        <el-table-column prop="templateName" label="模板名称" />
-        <el-table-column prop="description" label="描述" show-overflow-tooltip />
-        <el-table-column prop="courseHours" label="学时" width="80">
-          <template #default="scope">
-            {{ scope.row.courseHours }}节
+      <!-- 课程模板列表 -->
+      <el-table :data="templateList" border style="width: 100%" v-loading="loading">
+        <el-table-column prop="templateName" label="课程名称" min-width="150">
+          <template #default="{ row }">
+            <div class="template-info">
+              <div class="template-name">{{ row.templateName }}</div>
+              <div class="template-desc">{{ row.description }}</div>
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="academicYear" label="学年" width="120" />
-        <el-table-column prop="semester" label="学期" width="100">
-          <template #default="scope">
-            <el-tag :type="scope.row.semester === '第一学期' ? 'success' : 'warning'">
-              {{ scope.row.semester === '第一学期' ? '上半期' : '下半期' }}
+        <el-table-column prop="semester" label="学期" width="120">
+          <template #default="{ row }">
+            <el-tag :type="row.semester === '第一学期' ? 'success' : 'warning'">
+              {{ row.semester === '第一学期' ? '上半期' : '下半期' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="maxStudents" label="计划人数" width="100">
-          <template #default="scope">
-            {{ scope.row.maxStudents }}人
+        <el-table-column prop="courseHours" label="计划学时" width="100">
+          <template #default="{ row }">
+            {{ row.courseHours }}节
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120">
-          <template #default="scope">
-            <el-button size="small" type="primary" @click="applyForTemplate(scope.row)">
+        <el-table-column prop="maxStudents" label="计划人数" width="100">
+          <template #default="{ row }">
+            {{ row.maxStudents }}人
+          </template>
+        </el-table-column>
+        <el-table-column prop="createTime" label="创建时间" width="180">
+          <template #default="{ row }">
+            {{ formatDate(row.createTime) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="120" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" type="primary" @click="applyForTemplate(row)">
               申请开课
             </el-button>
           </template>
         </el-table-column>
       </el-table>
 
+      <!-- 分页 -->
       <el-pagination
-        v-model:current-page="templateCurrentPage"
-        v-model:page-size="templatePageSize"
+        v-model:current-page="pagination.currentPage"
+        v-model:page-size="pagination.pageSize"
         :page-sizes="[10, 20, 50, 100]"
-        :total="templateTotal"
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="handleTemplatePageSizeChange"
-        @current-change="handleTemplatePageChange"
-        style="margin-top: 20px; text-align: right;"
-      />
-    </div>
-
-    <!-- 我的申请列表 -->
-    <div v-if="activeTab === 'applications'">
-      <el-table :data="applicationList" border style="width: 100%">
-        <el-table-column prop="courseName" label="课程名称" />
-        <el-table-column prop="courseHours" label="学时" width="80">
-          <template #default="scope">
-            {{ scope.row.courseHours }}节
-          </template>
-        </el-table-column>
-        <el-table-column prop="academicYear" label="学年" width="120" />
-        <el-table-column prop="semester" label="学期" width="100">
-          <template #default="scope">
-            <el-tag :type="scope.row.semester === '第一学期' ? 'success' : 'warning'">
-              {{ scope.row.semester === '第一学期' ? '上半期' : '下半期' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="maxStudents" label="计划人数" width="100">
-          <template #default="scope">
-            {{ scope.row.maxStudents }}人
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="scope">
-            <el-tag :type="getStatusType(scope.row.status)">
-              {{ getStatusText(scope.row.status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="applyTime" label="申请时间" width="180" />
-        <el-table-column label="操作" width="200">
-          <template #default="scope">
-            <el-button v-if="scope.row.status === 0" size="small" @click="editApplication(scope.row)">编辑</el-button>
-            <el-button v-if="scope.row.status === 0" size="small" type="danger" @click="deleteApplication(scope.row.id)">删除</el-button>
-            <el-button size="small" type="info" @click="viewApplication(scope.row)">详情</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <el-pagination
-        v-model:current-page="currentPage"
-        v-model:page-size="pageSize"
-        :page-sizes="[10, 20, 50, 100]"
-        :total="total"
+        :total="pagination.total"
         layout="total, sizes, prev, pager, next, jumper"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
         style="margin-top: 20px; text-align: right;"
       />
-    </div>
+    </el-card>
 
     <!-- 申请开课对话框 -->
     <el-dialog
       v-model="dialogVisible"
-      :title="isEdit ? '编辑申请' : '申请开课'"
+      title="申请开课"
       width="600px"
     >
-      <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
+      <el-form :model="applicationForm" :rules="applicationRules" ref="applicationFormRef" label-width="100px">
         <el-form-item label="课程名称">
-          <el-input :value="selectedTemplate?.templateName" readonly />
+          <el-input v-model="selectedTemplate.templateName" readonly />
         </el-form-item>
         <el-form-item label="课程描述">
-          <el-input :value="selectedTemplate?.description" type="textarea" rows="2" readonly />
+          <el-input v-model="selectedTemplate.description" type="textarea" rows="2" readonly />
         </el-form-item>
         <el-form-item label="学年">
-          <el-input :value="selectedTemplate?.academicYear" readonly />
+          <el-input v-model="selectedTemplate.academicYear" readonly />
         </el-form-item>
         <el-form-item label="学期">
-          <el-input :value="selectedTemplate?.semester === '第一学期' ? '第一学期（上半期）' : '第二学期（下半期）'" readonly />
+          <el-input :value="selectedTemplate.semester === '第一学期' ? '第一学期（上半期）' : '第二学期（下半期）'" readonly />
         </el-form-item>
-        <el-form-item label="课程学时">
-          <el-input :value="selectedTemplate?.courseHours + '节'" readonly />
+        <el-form-item label="计划学时" prop="courseHours">
+          <el-input 
+            v-model="applicationForm.courseHours" 
+            readonly
+            placeholder="课程学时">
+            <template #suffix>节</template>
+          </el-input>
         </el-form-item>
-        <el-form-item label="计划人数">
-          <el-input :value="selectedTemplate?.maxStudents + '人'" readonly />
+        <el-form-item label="计划人数" prop="maxStudents">
+          <el-input 
+            v-model="applicationForm.maxStudents" 
+            readonly
+            placeholder="计划人数">
+            <template #suffix>人</template>
+          </el-input>
         </el-form-item>
         <el-form-item label="申请理由" prop="reason">
-          <el-input v-model="form.reason" type="textarea" rows="3" placeholder="请输入申请理由" />
+          <el-input 
+            v-model="applicationForm.reason" 
+            type="textarea" 
+            rows="4" 
+            placeholder="请输入申请理由"
+            maxlength="500"
+            show-word-limit>
+          </el-input>
         </el-form-item>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitForm">确定</el-button>
+          <el-button type="primary" @click="submitApplication" :loading="submitLoading">提交申请</el-button>
         </span>
       </template>
-    </el-dialog>
-
-    <!-- 查看申请详情对话框 -->
-    <el-dialog
-      v-model="viewDialogVisible"
-      title="申请详情"
-      width="600px"
-    >
-      <el-descriptions :column="2" border>
-        <el-descriptions-item label="申请ID">{{ applicationDetail.id }}</el-descriptions-item>
-        <el-descriptions-item label="课程名称">{{ applicationDetail.courseName }}</el-descriptions-item>
-        <el-descriptions-item label="学年">{{ applicationDetail.academicYear }}</el-descriptions-item>
-        <el-descriptions-item label="学期">{{ applicationDetail.semester }}</el-descriptions-item>
-        <el-descriptions-item label="计划人数">{{ applicationDetail.maxStudents }}人</el-descriptions-item>
-        <el-descriptions-item label="课程学时">{{ applicationDetail.courseHours }}节</el-descriptions-item>
-        <el-descriptions-item label="状态">
-          <el-tag :type="getStatusType(applicationDetail.status)">
-            {{ getStatusText(applicationDetail.status) }}
-          </el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="申请时间">{{ applicationDetail.applyTime }}</el-descriptions-item>
-        <el-descriptions-item label="审核时间" v-if="applicationDetail.reviewTime">
-          {{ applicationDetail.reviewTime }}
-        </el-descriptions-item>
-      </el-descriptions>
-      <el-descriptions :column="1" border style="margin-top: 20px">
-        <el-descriptions-item label="申请理由">{{ applicationDetail.reason }}</el-descriptions-item>
-        <el-descriptions-item label="审核意见" v-if="applicationDetail.reviewComment">
-          {{ applicationDetail.reviewComment }}
-        </el-descriptions-item>
-      </el-descriptions>
     </el-dialog>
   </div>
 </template>
 
 <script>
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import axios from 'axios'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { Document } from '@element-plus/icons-vue'
+import request from '../../utils/request'
 
 export default {
   name: 'CourseApplication',
+  components: {
+    Document
+  },
   setup() {
-    const activeTab = ref('templates')
-    const applicationList = ref([])
-    const templateList = ref([])
-    const currentPage = ref(1)
-    const pageSize = ref(10)
-    const total = ref(0)
-    const templateCurrentPage = ref(1)
-    const templatePageSize = ref(10)
-    const templateTotal = ref(0)
-    const templateSearchKeyword = ref('')
+    const router = useRouter()
+    const loading = ref(false)
+    const submitLoading = ref(false)
     const dialogVisible = ref(false)
-    const viewDialogVisible = ref(false)
-    const isEdit = ref(false)
-    const formRef = ref(null)
-    const selectedTemplate = ref(null)
+    const applicationFormRef = ref()
 
-    const form = reactive({
-      id: null,
-      templateId: null,
+    const searchForm = reactive({
+      keyword: '',
+      academicYear: '',
+      semester: ''
+    })
+
+    const pagination = reactive({
+      currentPage: 1,
+      pageSize: 10,
+      total: 0
+    })
+
+    const templateList = ref([])
+    const selectedTemplate = ref({})
+    
+    const applicationForm = reactive({
+      courseHours: null,
+      maxStudents: null,
       reason: ''
     })
 
-    const applicationDetail = reactive({})
-
-    const rules = {
+    const applicationRules = {
       reason: [
-        { required: true, message: '请输入申请理由', trigger: 'blur' }
+        { required: true, message: '请输入申请理由', trigger: 'blur' },
+        { min: 10, max: 500, message: '申请理由长度在10-500个字符', trigger: 'blur' }
       ]
     }
 
-    const loadApplications = async () => {
-      try {
-        const response = await axios.get('/api/course-applications', {
-          params: {
-            page: currentPage.value,
-            size: pageSize.value
-          }
-        })
-        if (response.data.code === 200) {
-          applicationList.value = response.data.data.records || []
-          total.value = response.data.data.total || 0
-        }
-      } catch (error) {
-        console.error('加载申请列表失败:', error)
-        ElMessage.error('加载申请列表失败')
-      }
-    }
-
+    // 获取课程模板列表
     const loadTemplates = async () => {
       try {
-        const response = await axios.get('/api/course-templates/enabled', {
-          params: {
-            keyword: templateSearchKeyword.value
-          }
-        })
-        if (response.data.code === 200) {
-          templateList.value = response.data.data || []
-          templateTotal.value = response.data.data.length || 0
+        loading.value = true
+        const params = {
+          page: pagination.currentPage,
+          size: pagination.pageSize,
+          keyword: searchForm.keyword,
+          academicYear: searchForm.academicYear,
+          semester: searchForm.semester
+        }
+        
+        const response = await request.get('/course-templates/enabled', { params })
+        
+        if (response.code === 200) {
+          templateList.value = response.data.records || []
+          pagination.total = response.data.total || 0
         }
       } catch (error) {
-        console.error('加载课程模板失败:', error)
-        ElMessage.error('加载课程模板失败')
+        console.error('获取模板列表失败:', error)
+        ElMessage.error('获取模板列表失败')
+      } finally {
+        loading.value = false
       }
     }
 
+    // 搜索模板
     const searchTemplates = () => {
+      pagination.currentPage = 1
       loadTemplates()
     }
 
+    // 重置搜索
+    const resetSearch = () => {
+      Object.assign(searchForm, {
+        keyword: '',
+        academicYear: '',
+        semester: ''
+      })
+      pagination.currentPage = 1
+      loadTemplates()
+    }
+
+    // 申请开课
     const applyForTemplate = (template) => {
-      selectedTemplate.value = template
-      isEdit.value = false
-      resetForm()
-      form.templateId = template.id
+      selectedTemplate.value = { ...template }
+      applicationForm.courseHours = template.courseHours
+      applicationForm.maxStudents = template.maxStudents
+      applicationForm.reason = ''
       dialogVisible.value = true
     }
 
-    const editApplication = (row) => {
-      isEdit.value = true
-      Object.assign(form, {
-        id: row.id,
-        templateId: row.templateId,
-        reason: row.reason
-      })
-      // 查找对应的模板信息
-      selectedTemplate.value = templateList.value.find(t => t.id === row.templateId) || {
-        templateName: row.courseName,
-        description: '',
-        courseHours: row.courseHours,
-        academicYear: row.academicYear,
-        semester: row.semester,
-        maxStudents: row.maxStudents
-      }
-      dialogVisible.value = true
-    }
-
-    const viewApplication = (row) => {
-      Object.assign(applicationDetail, row)
-      viewDialogVisible.value = true
-    }
-
-    const resetForm = () => {
-      Object.assign(form, {
-        id: null,
-        templateId: null,
-        reason: ''
-      })
-      if (formRef.value) {
-        formRef.value.resetFields()
-      }
-    }
-
-    const submitForm = async () => {
-      if (!formRef.value) return
-      
+    // 提交申请
+    const submitApplication = async () => {
       try {
-        await formRef.value.validate()
+        await applicationFormRef.value.validate()
+        submitLoading.value = true
+
+        const submitData = {
+          templateId: selectedTemplate.value.id,
+          courseHours: applicationForm.courseHours,
+          maxStudents: applicationForm.maxStudents,
+          reason: applicationForm.reason
+        }
+
+        const response = await request.post('/course-applications', submitData)
         
-        const url = isEdit.value ? `/api/course-applications/${form.id}` : '/api/course-applications'
-        const method = isEdit.value ? 'put' : 'post'
-        
-        const response = await axios[method](url, form)
-        
-        if (response.data.code === 200) {
-          ElMessage.success(isEdit.value ? '更新成功' : '申请提交成功')
+        if (response.code === 200) {
+          ElMessage.success('申请提交成功')
           dialogVisible.value = false
-          loadApplications()
-          // 切换到我的申请页面
-          activeTab.value = 'applications'
-        } else {
-          ElMessage.error(response.data.message)
+          // 可以选择跳转到我的申请页面
+          router.push('/course/my-applications')
         }
       } catch (error) {
-        console.error('提交失败:', error)
-        ElMessage.error('操作失败')
+        console.error('提交申请失败:', error)
+        ElMessage.error(error.response?.data?.message || '提交申请失败')
+      } finally {
+        submitLoading.value = false
       }
     }
 
-    const getStatusType = (status) => {
-      const statusMap = {
-        0: 'warning', // 待审核
-        1: 'success', // 已通过
-        2: 'danger'   // 已拒绝
-      }
-      return statusMap[status] || 'info'
+    // 跳转到我的申请页面
+    const goToMyApplications = () => {
+      router.push('/course/my-applications')
     }
 
-    const getStatusText = (status) => {
-      const statusMap = {
-        0: '待审核',
-        1: '已通过',
-        2: '已拒绝'
-      }
-      return statusMap[status] || '未知'
+    // 格式化日期
+    const formatDate = (dateString) => {
+      if (!dateString) return '-'
+      return new Date(dateString).toLocaleString('zh-CN')
     }
 
-    const handleSizeChange = (val) => {
-      pageSize.value = val
-      loadApplications()
-    }
-
-    const handleCurrentChange = (val) => {
-      currentPage.value = val
-      loadApplications()
-    }
-
-    const handleTemplatePageSizeChange = (val) => {
-      templatePageSize.value = val
+    // 分页处理
+    const handleSizeChange = (size) => {
+      pagination.pageSize = size
+      pagination.currentPage = 1
       loadTemplates()
     }
 
-    const handleTemplatePageChange = (val) => {
-      templateCurrentPage.value = val
+    const handleCurrentChange = (page) => {
+      pagination.currentPage = page
       loadTemplates()
-    }
-
-    const deleteApplication = async (id) => {
-      try {
-        await ElMessageBox.confirm('确定要删除这个申请吗？', '确认删除', {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning'
-        })
-        
-        const response = await axios.delete(`/api/course-applications/${id}`)
-        
-        if (response.data.code === 200) {
-          ElMessage.success('删除成功')
-          loadApplications()
-        } else {
-          ElMessage.error(response.data.message)
-        }
-      } catch (error) {
-        if (error !== 'cancel') {
-          console.error('删除失败:', error)
-          ElMessage.error('删除失败')
-        }
-      }
     }
 
     onMounted(() => {
       loadTemplates()
-      loadApplications()
     })
 
     return {
-      activeTab,
-      applicationList,
-      templateList,
-      currentPage,
-      pageSize,
-      total,
-      templateCurrentPage,
-      templatePageSize,
-      templateTotal,
-      templateSearchKeyword,
+      loading,
+      submitLoading,
       dialogVisible,
-      viewDialogVisible,
-      isEdit,
-      form,
-      applicationDetail,
-      rules,
-      formRef,
+      applicationFormRef,
+      searchForm,
+      pagination,
+      templateList,
       selectedTemplate,
+      applicationForm,
+      applicationRules,
       loadTemplates,
       searchTemplates,
+      resetSearch,
       applyForTemplate,
-      editApplication,
-      viewApplication,
-      deleteApplication,
-      submitForm,
-      getStatusType,
-      getStatusText,
+      submitApplication,
+      goToMyApplications,
+      formatDate,
       handleSizeChange,
-      handleCurrentChange,
-      handleTemplatePageSizeChange,
-      handleTemplatePageChange
+      handleCurrentChange
     }
   }
 }
@@ -449,25 +340,66 @@ export default {
   padding: 20px;
 }
 
-.header {
+.card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
 }
 
-.tabs {
+.header-controls {
   display: flex;
+  align-items: center;
   gap: 10px;
 }
 
-.search-box {
-  display: flex;
-  align-items: center;
+.search-container {
+  margin-bottom: 20px;
 }
 
-.el-pagination {
-  margin-top: 20px;
-  text-align: right;
+.template-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.template-name {
+  font-weight: bold;
+  color: #303133;
+  margin-bottom: 5px;
+}
+
+.template-desc {
+  font-size: 12px;
+  color: #909399;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .course-application {
+    padding: 10px;
+  }
+  
+  .search-container :deep(.el-form--inline .el-form-item) {
+    display: block;
+    margin-bottom: 15px;
+  }
+  
+  .template-desc {
+    max-width: 150px;
+  }
+  
+  .header-controls {
+    flex-direction: column;
+    gap: 5px;
+  }
 }
 </style> 

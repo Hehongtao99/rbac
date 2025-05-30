@@ -12,7 +12,9 @@ import NoticeView from '../views/NoticeView.vue'
 import CourseManagement from '../views/CourseManagement.vue'
 import CourseTemplateManagement from '../views/CourseTemplateManagement.vue'
 import CourseApplication from '../views/teacher/CourseApplication.vue'
+import MyApplications from '../views/teacher/MyApplications.vue'
 import CourseApplicationReview from '../views/admin/CourseApplicationReview.vue'
+import ScheduleManagement from '../views/teacher/ScheduleManagement.vue'
 import Profile from '../views/Profile.vue'
 
 const routes = [
@@ -124,11 +126,27 @@ const routes = [
           }
         },
         {
+          path: '/course/my-applications',
+          name: 'MyApplications',
+          component: MyApplications,
+          meta: {
+            title: '我的申请'
+          }
+        },
+        {
           path: '/course/application-review',
           name: 'CourseApplicationReview',
           component: CourseApplicationReview,
           meta: {
             title: '开课申请审批'
+          }
+        },
+        {
+          path: '/course/schedule',
+          name: 'ScheduleManagement',
+          component: ScheduleManagement,
+          meta: {
+            title: '课程表管理'
           }
         },
       {

@@ -6,12 +6,12 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("sys_course_application")
-public class CourseApplication {
+@TableName("sys_schedule")
+public class Schedule {
     @TableId(type = IdType.AUTO)
     private Long id;
     
-    private Long templateId;
+    private Long courseId;
     
     private String courseName;
     
@@ -21,27 +21,17 @@ public class CourseApplication {
     
     private String academicYear;
     
-    private String semester;
+    private Integer weekNumber;  // 第几周 (1-20)
     
-    private Integer maxStudents;
+    private Integer dayOfWeek;   // 星期几 (1-7, 1为周一)
     
-    private Integer courseHours;
+    private Integer timeSlot;    // 时间段 (1-6, 上午1-2, 下午3-4, 晚上5-6)
     
-    private Integer remainingHours; // 剩余课时
+    private String timeRange;    // 时间范围文字描述
     
-    private String reason;
+    private String classroom;    // 教室
     
-    private Integer status;
-    
-    private LocalDateTime applyTime;
-    
-    private LocalDateTime reviewTime;
-    
-    private Long reviewerId;
-    
-    private String reviewerName;
-    
-    private String reviewComment;
+    private Integer reducedHours; // 减少的课时数
     
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
