@@ -76,11 +76,25 @@
     <!-- 我的申请列表 -->
     <div v-if="activeTab === 'applications'">
       <el-table :data="applicationList" border style="width: 100%">
-        <el-table-column prop="id" label="申请ID" width="80" />
         <el-table-column prop="courseName" label="课程名称" />
-        <el-table-column prop="academicYear" label="学年" />
-        <el-table-column prop="semester" label="学期" />
-        <el-table-column prop="maxStudents" label="计划人数" width="100" />
+        <el-table-column prop="courseHours" label="学时" width="80">
+          <template #default="scope">
+            {{ scope.row.courseHours }}节
+          </template>
+        </el-table-column>
+        <el-table-column prop="academicYear" label="学年" width="120" />
+        <el-table-column prop="semester" label="学期" width="100">
+          <template #default="scope">
+            <el-tag :type="scope.row.semester === '第一学期' ? 'success' : 'warning'">
+              {{ scope.row.semester === '第一学期' ? '上半期' : '下半期' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="maxStudents" label="计划人数" width="100">
+          <template #default="scope">
+            {{ scope.row.maxStudents }}人
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="scope">
             <el-tag :type="getStatusType(scope.row.status)">
@@ -88,18 +102,12 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="applyTime" label="申请时间" />
-        <el-table-column label="操作" width="150">
+        <el-table-column prop="applyTime" label="申请时间" width="180" />
+        <el-table-column label="操作" width="200">
           <template #default="scope">
-            <el-button size="small" @click="viewApplication(scope.row)">查看</el-button>
-            <el-button 
-              v-if="scope.row.status === 0" 
-              size="small" 
-              type="warning" 
-              @click="editApplication(scope.row)"
-            >
-              编辑
-            </el-button>
+            <el-button v-if="scope.row.status === 0" size="small" @click="editApplication(scope.row)">编辑</el-button>
+            <el-button v-if="scope.row.status === 0" size="small" type="danger" @click="deleteApplication(scope.row.id)">删除</el-button>
+            <el-button size="small" type="info" @click="viewApplication(scope.row)">详情</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -188,7 +196,7 @@
 
 <script>
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 
 export default {
@@ -213,16 +221,12 @@ export default {
     const form = reactive({
       id: null,
       templateId: null,
-      maxStudents: 50,
       reason: ''
     })
 
     const applicationDetail = reactive({})
 
     const rules = {
-      maxStudents: [
-        { required: true, message: '请输入计划人数', trigger: 'blur' }
-      ],
       reason: [
         { required: true, message: '请输入申请理由', trigger: 'blur' }
       ]
@@ -280,7 +284,6 @@ export default {
       Object.assign(form, {
         id: row.id,
         templateId: row.templateId,
-        maxStudents: row.maxStudents,
         reason: row.reason
       })
       // 查找对应的模板信息
@@ -289,7 +292,8 @@ export default {
         description: '',
         courseHours: row.courseHours,
         academicYear: row.academicYear,
-        semester: row.semester
+        semester: row.semester,
+        maxStudents: row.maxStudents
       }
       dialogVisible.value = true
     }
@@ -303,7 +307,6 @@ export default {
       Object.assign(form, {
         id: null,
         templateId: null,
-        maxStudents: 50,
         reason: ''
       })
       if (formRef.value) {
@@ -375,6 +378,30 @@ export default {
       loadTemplates()
     }
 
+    const deleteApplication = async (id) => {
+      try {
+        await ElMessageBox.confirm('确定要删除这个申请吗？', '确认删除', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        })
+        
+        const response = await axios.delete(`/api/course-applications/${id}`)
+        
+        if (response.data.code === 200) {
+          ElMessage.success('删除成功')
+          loadApplications()
+        } else {
+          ElMessage.error(response.data.message)
+        }
+      } catch (error) {
+        if (error !== 'cancel') {
+          console.error('删除失败:', error)
+          ElMessage.error('删除失败')
+        }
+      }
+    }
+
     onMounted(() => {
       loadTemplates()
       loadApplications()
@@ -404,6 +431,7 @@ export default {
       applyForTemplate,
       editApplication,
       viewApplication,
+      deleteApplication,
       submitForm,
       getStatusType,
       getStatusText,

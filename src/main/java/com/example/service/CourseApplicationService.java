@@ -84,6 +84,7 @@ public class CourseApplicationService {
                     application.setCourseHours(template.getCourseHours());
                     application.setAcademicYear(template.getAcademicYear());
                     application.setSemester(template.getSemester());
+                    application.setMaxStudents(template.getMaxStudents());
                 }
             }
             
