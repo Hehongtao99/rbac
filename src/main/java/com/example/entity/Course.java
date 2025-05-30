@@ -29,6 +29,8 @@ public class Course {
     
     private Integer status;
     
+    private Integer allowApplication;
+    
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
     

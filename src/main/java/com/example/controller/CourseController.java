@@ -21,6 +21,24 @@ public class CourseController {
         return courseService.getCourseList(page, size, keyword);
     }
 
+    @GetMapping("/template-list")
+    public Result<Object> getCourseTemplateList(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
+            @RequestParam(required = false) String keyword) {
+        return courseService.getCourseTemplateList(page, size, keyword);
+    }
+
+    @GetMapping("/instance-list")
+    public Result<Object> getCourseInstanceList(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String courseFilter,
+            @RequestParam(required = false) String teacherFilter) {
+        return courseService.getCourseInstanceList(page, size, keyword, courseFilter, teacherFilter);
+    }
+
     @PostMapping("/create")
     public Result<Object> createCourse(@RequestBody CourseDTO courseDTO) {
         return courseService.createCourse(courseDTO);
@@ -44,5 +62,10 @@ public class CourseController {
     @GetMapping("/teachers")
     public Result<Object> getTeacherList() {
         return courseService.getTeacherList();
+    }
+
+    @PostMapping("/toggle-application/{id}")
+    public Result<Object> toggleApplicationStatus(@PathVariable Long id) {
+        return courseService.toggleApplicationStatus(id);
     }
 } 

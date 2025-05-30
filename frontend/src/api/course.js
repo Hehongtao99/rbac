@@ -1,9 +1,27 @@
 import request from '../utils/request'
 
-// 获取课程列表
+// 获取课程列表（包含模板和实例）
 export const getCourseList = (params) => {
   return request({
     url: '/course/list',
+    method: 'get',
+    params
+  })
+}
+
+// 获取课程模板列表（仅模板）
+export const getCourseTemplateList = (params) => {
+  return request({
+    url: '/course/template-list',
+    method: 'get',
+    params
+  })
+}
+
+// 获取开课实例列表（仅实例）
+export const getCourseInstanceList = (params) => {
+  return request({
+    url: '/course/instance-list',
     method: 'get',
     params
   })
@@ -48,5 +66,13 @@ export const getTeacherList = () => {
   return request({
     url: '/course/teachers',
     method: 'get'
+  })
+}
+
+// 切换申请状态
+export const toggleApplicationStatus = (id) => {
+  return request({
+    url: `/course/toggle-application/${id}`,
+    method: 'post'
   })
 } 

@@ -9,9 +9,8 @@ public class CourseDTO {
     private String courseDescription;
     private Integer maxStudents;
     private Integer currentStudents;
-    private Long teacherId;
-    private String teacherName;
     private Integer courseHours;
     private String academicYear;
     private Integer status;
+    private Integer allowApplication; // 是否允许申请：0-关闭申请，1-开放申请
 } 

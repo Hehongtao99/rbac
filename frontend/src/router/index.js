@@ -10,6 +10,9 @@ import StudentManagement from '../views/StudentManagement.vue'
 import NoticeManagement from '../views/NoticeManagement.vue'
 import NoticeView from '../views/NoticeView.vue'
 import CourseManagement from '../views/CourseManagement.vue'
+import CourseTemplateManagement from '../views/CourseTemplateManagement.vue'
+import CourseApplication from '../views/teacher/CourseApplication.vue'
+import CourseApplicationReview from '../views/admin/CourseApplicationReview.vue'
 import Profile from '../views/Profile.vue'
 
 const routes = [
@@ -101,7 +104,31 @@ const routes = [
           name: 'CourseManagement',
           component: CourseManagement,
           meta: {
-            title: '课程管理'
+            title: '开课实例管理'
+          }
+        },
+        {
+          path: '/course/template',
+          name: 'CourseTemplateManagement',
+          component: CourseTemplateManagement,
+          meta: {
+            title: '课程模板管理'
+          }
+        },
+        {
+          path: '/course/application',
+          name: 'CourseApplication',
+          component: CourseApplication,
+          meta: {
+            title: '申请开课'
+          }
+        },
+        {
+          path: '/course/application-review',
+          name: 'CourseApplicationReview',
+          component: CourseApplicationReview,
+          meta: {
+            title: '开课申请审批'
           }
         },
       {
