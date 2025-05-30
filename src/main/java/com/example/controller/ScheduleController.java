@@ -53,14 +53,36 @@ public class ScheduleController {
      * 获取某周的课程表 - 从JWT获取teacherId
      */
     @GetMapping("/weekly")
-    public Result<Map<String, List<ScheduleVO>>> getWeeklySchedule(@RequestParam String academicYear,
-                                                                  @RequestParam Integer weekNumber) {
-        try {
-            Map<String, List<ScheduleVO>> schedule = scheduleService.getWeeklySchedule(null, academicYear, weekNumber);
-            return Result.success(schedule);
-        } catch (Exception e) {
-            return Result.error(e.getMessage());
-        }
+    public Result<Map<String, List<ScheduleVO>>> getWeeklySchedule(
+            @RequestParam String academicYear, 
+            @RequestParam Integer weekNumber) {
+        Map<String, List<ScheduleVO>> schedule = scheduleService.getWeeklySchedule(null, academicYear, weekNumber);
+        return Result.success(schedule);
+    }
+
+    /**
+     * 管理员获取所有教师的课程表
+     */
+    @GetMapping("/admin/all")
+    public Result<List<ScheduleVO>> getAllSchedulesForAdmin(
+            @RequestParam String academicYear,
+            @RequestParam(required = false) Integer weekNumber,
+            @RequestParam(required = false) String teacherName,
+            @RequestParam(required = false) String courseName) {
+        List<ScheduleVO> schedules = scheduleService.getAllSchedulesForAdmin(academicYear, weekNumber, teacherName, courseName);
+        return Result.success(schedules);
+    }
+
+    /**
+     * 管理员获取周课程表（网格形式）
+     */
+    @GetMapping("/admin/weekly")
+    public Result<Map<String, Object>> getWeeklyScheduleForAdmin(
+            @RequestParam String academicYear,
+            @RequestParam Integer weekNumber,
+            @RequestParam(required = false) Long teacherId) {
+        Map<String, Object> result = scheduleService.getWeeklyScheduleForAdmin(academicYear, weekNumber, teacherId);
+        return Result.success(result);
     }
 
     /**

@@ -15,6 +15,7 @@ import CourseApplication from '../views/teacher/CourseApplication.vue'
 import MyApplications from '../views/teacher/MyApplications.vue'
 import CourseApplicationReview from '../views/admin/CourseApplicationReview.vue'
 import ScheduleManagement from '../views/teacher/ScheduleManagement.vue'
+import AllSchedules from '../views/admin/AllSchedules.vue'
 import Profile from '../views/Profile.vue'
 
 const routes = [
@@ -147,6 +148,14 @@ const routes = [
           component: ScheduleManagement,
           meta: {
             title: '课程表管理'
+          }
+        },
+        {
+          path: '/course/all-schedules',
+          name: 'AllSchedules',
+          component: AllSchedules,
+          meta: {
+            title: '所有课程表'
           }
         },
       {

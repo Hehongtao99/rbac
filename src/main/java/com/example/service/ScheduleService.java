@@ -44,4 +44,14 @@ public interface ScheduleService extends IService<Schedule> {
      * 获取可选择的课程列表（教师申请通过的课程）
      */
     List<Map<String, Object>> getAvailableCourses(Long teacherId, String academicYear);
+    
+    /**
+     * 管理员获取所有教师的课程表
+     */
+    List<ScheduleVO> getAllSchedulesForAdmin(String academicYear, Integer weekNumber, String teacherName, String courseName);
+    
+    /**
+     * 管理员获取周课程表（网格形式）
+     */
+    Map<String, Object> getWeeklyScheduleForAdmin(String academicYear, Integer weekNumber, Long teacherId);
 } 

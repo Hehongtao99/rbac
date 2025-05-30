@@ -54,5 +54,15 @@ export default {
   // 初始化时间段配置
   initTimeSlotConfig() {
     return request.post(`${API_BASE_URL}/init-time-slots`)
+  },
+
+  // 管理员获取所有教师的课程表
+  getAllSchedulesForAdmin(params) {
+    return request.get(`${API_BASE_URL}/admin/all`, { params })
+  },
+
+  // 管理员获取周课程表（网格形式）
+  getWeeklyScheduleForAdmin(params) {
+    return request.get(`${API_BASE_URL}/admin/weekly`, { params })
   }
 } 

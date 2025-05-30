@@ -20,6 +20,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -287,6 +288,88 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
                     map.put("courseName", application.getCourseName());
                     return map;
                 }).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ScheduleVO> getAllSchedulesForAdmin(String academicYear, Integer weekNumber, String teacherName, String courseName) {
+        System.out.println("=== getAllSchedulesForAdmin 调试信息 ===");
+        System.out.println("学年: " + academicYear);
+        System.out.println("周次: " + weekNumber);
+        System.out.println("教师姓名: " + teacherName);
+        System.out.println("课程名称: " + courseName);
+        
+        LambdaQueryWrapper<Schedule> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Schedule::getAcademicYear, academicYear);
+        
+        if (weekNumber != null) {
+            wrapper.eq(Schedule::getWeekNumber, weekNumber);
+        }
+        
+        if (StringUtils.hasText(teacherName)) {
+            wrapper.like(Schedule::getTeacherName, teacherName);
+        }
+        
+        if (StringUtils.hasText(courseName)) {
+            wrapper.like(Schedule::getCourseName, courseName);
+        }
+        
+        wrapper.orderBy(true, true, Schedule::getWeekNumber)
+               .orderBy(true, true, Schedule::getDayOfWeek)
+               .orderBy(true, true, Schedule::getTimeSlot)
+               .orderBy(true, true, Schedule::getTeacherName);
+        
+        List<Schedule> schedules = this.list(wrapper);
+        System.out.println("查询到的课程表数量: " + schedules.size());
+        
+        for (Schedule schedule : schedules) {
+            System.out.println("课程表记录: " + schedule.getId() + " - " + schedule.getCourseName() + " - " + schedule.getTeacherName() + " - 第" + schedule.getWeekNumber() + "周 - " + schedule.getDayOfWeek() + " - " + schedule.getTimeSlot());
+        }
+        
+        List<ScheduleVO> result = schedules.stream().map(this::convertToVO).collect(Collectors.toList());
+        System.out.println("返回的VO数量: " + result.size());
+        System.out.println("=== getAllSchedulesForAdmin 结束 ===");
+        
+        return result;
+    }
+
+    @Override
+    public Map<String, Object> getWeeklyScheduleForAdmin(String academicYear, Integer weekNumber, Long teacherId) {
+        LambdaQueryWrapper<Schedule> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Schedule::getAcademicYear, academicYear)
+               .eq(Schedule::getWeekNumber, weekNumber);
+        
+        if (teacherId != null) {
+            wrapper.eq(Schedule::getTeacherId, teacherId);
+        }
+        
+        wrapper.orderBy(true, true, Schedule::getDayOfWeek)
+               .orderBy(true, true, Schedule::getTimeSlot)
+               .orderBy(true, true, Schedule::getTeacherName);
+        
+        List<Schedule> schedules = this.list(wrapper);
+        List<ScheduleVO> scheduleVOs = schedules.stream().map(this::convertToVO).collect(Collectors.toList());
+        
+        // 按星期分组
+        Map<String, List<ScheduleVO>> weeklyData = scheduleVOs.stream()
+                .collect(Collectors.groupingBy(ScheduleVO::getDayOfWeekName));
+        
+        // 获取所有教师列表
+        List<Map<String, Object>> teachers = schedules.stream()
+                .map(s -> {
+                    Map<String, Object> teacher = new HashMap<>();
+                    teacher.put("id", s.getTeacherId());
+                    teacher.put("name", s.getTeacherName());
+                    return teacher;
+                })
+                .distinct()
+                .collect(Collectors.toList());
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("schedules", weeklyData);
+        result.put("teachers", teachers);
+        result.put("totalCount", schedules.size());
+        
+        return result;
     }
 
     private ScheduleVO convertToVO(Schedule schedule) {
