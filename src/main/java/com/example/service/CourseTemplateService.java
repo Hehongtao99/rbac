@@ -1,37 +1,39 @@
 package com.example.service;
 
-import com.example.entity.CourseTemplate;
-import com.example.common.Result;
+import com.example.common.PageResult;
+import com.example.dto.CourseDTO;
+import com.example.dto.CourseTemplatePageDTO;
+import com.example.vo.CourseTemplateVO;
 
 public interface CourseTemplateService {
     
     /**
-     * 获取模板列表
+     * 分页获取模板列表
      */
-    Result<Object> getTemplateList(Integer page, Integer size, String keyword);
+    PageResult<CourseTemplateVO> getTemplateList(CourseTemplatePageDTO pageDTO);
     
     /**
-     * 获取启用的模板列表
+     * 分页获取启用的模板列表
      */
-    Result<Object> getEnabledTemplateList(Integer page, Integer size, String keyword, String academicYear, String semester);
+    PageResult<CourseTemplateVO> getEnabledTemplateList(CourseTemplatePageDTO pageDTO);
     
     /**
      * 创建模板
      */
-    Result<Object> createTemplate(CourseTemplate template);
+    void createTemplate(CourseDTO templateDTO);
     
     /**
      * 更新模板
      */
-    Result<Object> updateTemplate(CourseTemplate template);
+    void updateTemplate(Long id, CourseDTO templateDTO);
     
     /**
      * 删除模板
      */
-    Result<Object> deleteTemplate(Long id);
+    void deleteTemplate(Long id);
     
     /**
      * 根据ID获取模板详情
      */
-    Result<Object> getTemplateById(Long id);
+    CourseTemplateVO getTemplateById(Long id);
 } 

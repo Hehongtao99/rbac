@@ -3,11 +3,13 @@ package com.example.service.impl;
 import com.example.dto.NoticeDTO;
 import com.example.dto.NoticeQueryDTO;
 import com.example.entity.Notice;
+import com.example.entity.User;
 import com.example.mapper.NoticeMapper;
 import com.example.service.NoticeService;
 import com.example.vo.NoticeVO;
 import com.example.common.PageResult;
 import com.example.util.PageUtil;
+import com.example.util.UserContextUtil;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -24,6 +26,9 @@ public class NoticeServiceImpl implements NoticeService {
     
     @Autowired
     private NoticeMapper noticeMapper;
+    
+    @Autowired
+    private UserContextUtil userContextUtil;
     
     // 状态映射
     private static final Map<Integer, String> STATUS_MAP = new HashMap<>();
@@ -65,12 +70,18 @@ public class NoticeServiceImpl implements NoticeService {
     }
     
     @Override
-    public void addNotice(NoticeDTO noticeDTO, Long publisherId, String publisherName) {
+    public void addNotice(NoticeDTO noticeDTO) {
+        // 获取当前登录用户信息
+        User currentUser = userContextUtil.getCurrentUser();
+        if (currentUser == null) {
+            throw new RuntimeException("用户未登录或token无效");
+        }
+        
         Notice notice = new Notice();
         BeanUtils.copyProperties(noticeDTO, notice);
         
-        notice.setPublisherId(publisherId);
-        notice.setPublisherName(publisherName);
+        notice.setPublisherId(currentUser.getId());
+        notice.setPublisherName(currentUser.getNickname() != null ? currentUser.getNickname() : currentUser.getUsername());
         notice.setCreateTime(LocalDateTime.now());
         notice.setUpdateTime(LocalDateTime.now());
         notice.setDeleted(0);

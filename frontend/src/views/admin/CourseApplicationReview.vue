@@ -136,7 +136,7 @@
 <script>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import request from '../../utils/request'
+import { getCourseApplicationListForAdmin, reviewCourseApplication } from '../../api/courseApplication'
 
 export default {
   name: 'CourseApplicationReview',
@@ -160,14 +160,10 @@ export default {
 
     const loadApplications = async () => {
       try {
-        const response = await request({
-          url: '/course-applications/admin',
-          method: 'get',
-          params: {
-            page: currentPage.value,
-            size: pageSize.value,
-            keyword: searchKeyword.value
-          }
+        const response = await getCourseApplicationListForAdmin({
+          page: currentPage.value,
+          size: pageSize.value,
+          keyword: searchKeyword.value
         })
         if (response.code === 200) {
           applicationList.value = response.data.records || []
@@ -210,13 +206,9 @@ export default {
         await reviewFormRef.value.validate()
         
         const status = reviewType.value === 'approve' ? 1 : 2
-        const response = await request({
-          url: `/course-applications/${currentApplication.value.id}/review`,
-          method: 'put',
-          data: {
-            status,
-            reviewComment: reviewForm.reviewComment
-          }
+        const response = await reviewCourseApplication(currentApplication.value.id, {
+          status,
+          reviewComment: reviewForm.reviewComment
         })
         
         if (response.code === 200) {

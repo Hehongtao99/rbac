@@ -1,54 +1,78 @@
 package com.example.controller;
 
-import com.example.entity.CourseTemplate;
-import com.example.service.CourseTemplateService;
+import com.example.common.PageResult;
 import com.example.common.Result;
+import com.example.dto.CourseDTO;
+import com.example.dto.CourseTemplatePageDTO;
+import com.example.service.CourseTemplateService;
+import com.example.vo.CourseTemplateVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * 课程模板控制器
+ */
 @RestController
 @RequestMapping("/api/course-templates")
+@CrossOrigin
 public class CourseTemplateController {
 
     @Autowired
     private CourseTemplateService courseTemplateService;
 
-    @GetMapping
-    public Result<Object> getTemplateList(
-            @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "10") Integer size,
-            @RequestParam(required = false) String keyword) {
-        return courseTemplateService.getTemplateList(page, size, keyword);
+    /**
+     * 分页获取课程模板列表
+     */
+    @PostMapping("/list")
+    public Result<PageResult<CourseTemplateVO>> getTemplateList(@RequestBody CourseTemplatePageDTO pageDTO) {
+        PageResult<CourseTemplateVO> result = courseTemplateService.getTemplateList(pageDTO);
+        return Result.success(result);
     }
 
-    @GetMapping("/enabled")
-    public Result<Object> getEnabledTemplateList(
-            @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "10") Integer size,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String academicYear,
-            @RequestParam(required = false) String semester) {
-        return courseTemplateService.getEnabledTemplateList(page, size, keyword, academicYear, semester);
+    /**
+     * 分页获取启用的课程模板列表
+     */
+    @PostMapping("/enabled")
+    public Result<PageResult<CourseTemplateVO>> getEnabledTemplateList(@RequestBody CourseTemplatePageDTO pageDTO) {
+        // 设置只查询启用的模板
+        pageDTO.setEnabledOnly(true);
+        PageResult<CourseTemplateVO> result = courseTemplateService.getEnabledTemplateList(pageDTO);
+        return Result.success(result);
     }
 
+    /**
+     * 创建课程模板
+     */
     @PostMapping
-    public Result<Object> createTemplate(@RequestBody CourseTemplate template) {
-        return courseTemplateService.createTemplate(template);
+    public Result<Void> createTemplate(@RequestBody CourseDTO templateDTO) {
+        courseTemplateService.createTemplate(templateDTO);
+        return Result.success();
     }
 
+    /**
+     * 更新课程模板
+     */
     @PutMapping("/{id}")
-    public Result<Object> updateTemplate(@PathVariable Long id, @RequestBody CourseTemplate template) {
-        template.setId(id);
-        return courseTemplateService.updateTemplate(template);
+    public Result<Void> updateTemplate(@PathVariable Long id, @RequestBody CourseDTO templateDTO) {
+        courseTemplateService.updateTemplate(id, templateDTO);
+        return Result.success();
     }
 
+    /**
+     * 删除课程模板
+     */
     @DeleteMapping("/{id}")
-    public Result<Object> deleteTemplate(@PathVariable Long id) {
-        return courseTemplateService.deleteTemplate(id);
+    public Result<Void> deleteTemplate(@PathVariable Long id) {
+        courseTemplateService.deleteTemplate(id);
+        return Result.success();
     }
 
+    /**
+     * 根据ID获取课程模板详情
+     */
     @GetMapping("/{id}")
-    public Result<Object> getTemplateById(@PathVariable Long id) {
-        return courseTemplateService.getTemplateById(id);
+    public Result<CourseTemplateVO> getTemplateById(@PathVariable Long id) {
+        CourseTemplateVO template = courseTemplateService.getTemplateById(id);
+        return Result.success(template);
     }
 } 

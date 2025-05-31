@@ -3,8 +3,8 @@ import request from '../utils/request'
 export const getTeacherList = (params) => {
   return request({
     url: '/teacher/list',
-    method: 'get',
-    params
+    method: 'post',
+    data: params
   })
 }
 

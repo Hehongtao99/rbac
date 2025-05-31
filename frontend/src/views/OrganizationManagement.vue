@@ -315,7 +315,7 @@ export default {
     const fetchOrganizations = async (searchParams = {}) => {
       try {
         loading.value = true
-        const response = await request.get('/admin/organizations', { params: searchParams })
+        const response = await request.post('/admin/organizations/query', searchParams)
         organizationTree.value = response.data
         
         // 判断是否为搜索模式

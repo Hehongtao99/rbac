@@ -3,8 +3,8 @@ import request from '../utils/request'
 export const getStudentList = (params) => {
   return request({
     url: '/student/list',
-    method: 'get',
-    params
+    method: 'post',
+    data: params
   })
 }
 
@@ -42,7 +42,7 @@ export const assignGradeAndEducation = (id, grade, educationSystem) => {
   return request({
     url: `/student/assign-grade-education/${id}`,
     method: 'put',
-    params: {
+    data: {
       grade,
       educationSystem
     }
@@ -53,7 +53,7 @@ export const setSemesterInfo = (id, currentYear, currentSemester) => {
   return request({
     url: `/student/set-semester/${id}`,
     method: 'put',
-    params: {
+    data: {
       currentYear,
       currentSemester
     }

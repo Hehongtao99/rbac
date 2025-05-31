@@ -1,17 +1,23 @@
 package com.example.service.impl;
 
+import com.example.common.PageResult;
+import com.example.dto.CourseDTO;
+import com.example.dto.CourseTemplatePageDTO;
 import com.example.entity.CourseTemplate;
 import com.example.mapper.CourseTemplateMapper;
 import com.example.service.CourseTemplateService;
-import com.example.common.Result;
-import com.example.common.PageResult;
 import com.example.util.PageUtil;
+import com.example.vo.CourseTemplateVO;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class CourseTemplateServiceImpl implements CourseTemplateService {
@@ -19,86 +25,113 @@ public class CourseTemplateServiceImpl implements CourseTemplateService {
     @Autowired
     private CourseTemplateMapper courseTemplateMapper;
 
-    @Override
-    public Result<Object> getTemplateList(Integer page, Integer size, String keyword) {
-        int offset = PageUtil.calculateOffset(page, size);
-        List<CourseTemplate> templates = courseTemplateMapper.selectPage(offset, size, keyword);
-        long total = courseTemplateMapper.selectCount(new CourseTemplate());
-        
-        PageResult<CourseTemplate> result = PageUtil.createPageResult(page, size, total, templates);
-        return Result.success(result);
+    // 状态映射
+    private static final Map<Integer, String> STATUS_MAP = new HashMap<>();
+    
+    static {
+        STATUS_MAP.put(0, "禁用");
+        STATUS_MAP.put(1, "启用");
     }
 
     @Override
-    public Result<Object> getEnabledTemplateList(Integer page, Integer size, String keyword, String academicYear, String semester) {
-        int offset = PageUtil.calculateOffset(page, size);
+    public PageResult<CourseTemplateVO> getTemplateList(CourseTemplatePageDTO pageDTO) {
+        int offset = PageUtil.calculateOffset(pageDTO.getPage(), pageDTO.getSize());
+        List<CourseTemplate> templates = courseTemplateMapper.selectPage(offset, pageDTO.getSize(), pageDTO.getKeyword());
+        long total = courseTemplateMapper.selectCount(new CourseTemplate());
+        
+        // 转换为VO
+        List<CourseTemplateVO> voList = templates.stream()
+                .map(this::convertToVO)
+                .collect(Collectors.toList());
+        
+        return PageUtil.createPageResult(pageDTO.getPage(), pageDTO.getSize(), total, voList);
+    }
+
+    @Override
+    public PageResult<CourseTemplateVO> getEnabledTemplateList(CourseTemplatePageDTO pageDTO) {
+        int offset = PageUtil.calculateOffset(pageDTO.getPage(), pageDTO.getSize());
         
         // 构建查询条件
         CourseTemplate queryTemplate = new CourseTemplate();
         queryTemplate.setStatus(1); // 只查询启用的模板
-        if (StringUtils.hasText(academicYear)) {
-            queryTemplate.setAcademicYear(academicYear);
+        if (StringUtils.hasText(pageDTO.getAcademicYear())) {
+            queryTemplate.setAcademicYear(pageDTO.getAcademicYear());
         }
-        if (StringUtils.hasText(semester)) {
-            queryTemplate.setSemester(semester);
+        if (StringUtils.hasText(pageDTO.getSemester())) {
+            queryTemplate.setSemester(pageDTO.getSemester());
         }
         
-        List<CourseTemplate> templates = courseTemplateMapper.selectPageByCondition(offset, size, keyword, queryTemplate);
+        List<CourseTemplate> templates = courseTemplateMapper.selectPageByCondition(offset, pageDTO.getSize(), pageDTO.getKeyword(), queryTemplate);
         long total = courseTemplateMapper.selectCount(queryTemplate);
         
-        PageResult<CourseTemplate> result = PageUtil.createPageResult(page, size, total, templates);
-        return Result.success(result);
+        // 转换为VO
+        List<CourseTemplateVO> voList = templates.stream()
+                .map(this::convertToVO)
+                .collect(Collectors.toList());
+        
+        return PageUtil.createPageResult(pageDTO.getPage(), pageDTO.getSize(), total, voList);
     }
 
     @Override
-    public Result<Object> createTemplate(CourseTemplate template) {
-        try {
-            if (template.getStatus() == null) {
-                template.setStatus(1);
-            }
-            template.setCreateTime(LocalDateTime.now());
-            template.setUpdateTime(LocalDateTime.now());
-            template.setDeleted(0);
-            
-            courseTemplateMapper.insert(template);
-            return Result.success(template);
-        } catch (Exception e) {
-            return Result.error("创建失败：" + e.getMessage());
+    public void createTemplate(CourseDTO templateDTO) {
+        CourseTemplate template = new CourseTemplate();
+        BeanUtils.copyProperties(templateDTO, template);
+        
+        if (template.getStatus() == null) {
+            template.setStatus(1);
         }
+        template.setCreateTime(LocalDateTime.now());
+        template.setUpdateTime(LocalDateTime.now());
+        template.setDeleted(0);
+        
+        courseTemplateMapper.insert(template);
     }
 
     @Override
-    public Result<Object> updateTemplate(CourseTemplate template) {
-        try {
-            template.setUpdateTime(LocalDateTime.now());
-            courseTemplateMapper.updateById(template);
-            return Result.success(template);
-        } catch (Exception e) {
-            return Result.error("更新失败：" + e.getMessage());
+    public void updateTemplate(Long id, CourseDTO templateDTO) {
+        CourseTemplate existingTemplate = courseTemplateMapper.selectById(id);
+        if (existingTemplate == null) {
+            throw new RuntimeException("模板不存在");
         }
+        
+        CourseTemplate template = new CourseTemplate();
+        BeanUtils.copyProperties(templateDTO, template);
+        template.setId(id);
+        template.setUpdateTime(LocalDateTime.now());
+        
+        courseTemplateMapper.updateById(template);
     }
 
     @Override
-    public Result<Object> deleteTemplate(Long id) {
-        try {
-            courseTemplateMapper.deleteById(id);
-            return Result.success();
-        } catch (Exception e) {
-            return Result.error("删除失败：" + e.getMessage());
+    public void deleteTemplate(Long id) {
+        CourseTemplate template = courseTemplateMapper.selectById(id);
+        if (template == null) {
+            throw new RuntimeException("模板不存在");
         }
+        
+        courseTemplateMapper.deleteById(id);
     }
 
     @Override
-    public Result<Object> getTemplateById(Long id) {
-        try {
-            CourseTemplate template = courseTemplateMapper.selectById(id);
-            if (template != null) {
-                return Result.success(template);
-            } else {
-                return Result.error("模板不存在");
-            }
-        } catch (Exception e) {
-            return Result.error("查询失败：" + e.getMessage());
+    public CourseTemplateVO getTemplateById(Long id) {
+        CourseTemplate template = courseTemplateMapper.selectById(id);
+        if (template == null) {
+            throw new RuntimeException("模板不存在");
         }
+        
+        return convertToVO(template);
+    }
+    
+    /**
+     * 转换为VO对象
+     */
+    private CourseTemplateVO convertToVO(CourseTemplate template) {
+        CourseTemplateVO vo = new CourseTemplateVO();
+        BeanUtils.copyProperties(template, vo);
+        
+        // 设置状态名称
+        vo.setStatusName(STATUS_MAP.get(template.getStatus()));
+        
+        return vo;
     }
 } 

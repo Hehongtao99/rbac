@@ -22,17 +22,17 @@ public interface ScheduleService {
     /**
      * 获取教师的课程表
      */
-    List<ScheduleVO> getTeacherSchedule(Long teacherId, String academicYear);
+    List<ScheduleVO> getTeacherSchedule(String academicYear);
     
     /**
      * 获取某周的课程表
      */
-    Map<String, List<ScheduleVO>> getWeeklySchedule(Long teacherId, String academicYear, Integer weekNumber);
+    Map<String, List<ScheduleVO>> getWeeklySchedule(String academicYear, Integer weekNumber);
     
     /**
      * 获取某个班级某周的课程表
      */
-    Map<String, List<ScheduleVO>> getWeeklyScheduleByClass(Long teacherId, String academicYear, Integer weekNumber, Long classId);
+    Map<String, List<ScheduleVO>> getWeeklyScheduleByClass(String academicYear, Integer weekNumber, Long classId);
     
     /**
      * 删除课程表中的课程
@@ -42,22 +42,22 @@ public interface ScheduleService {
     /**
      * 检查时间冲突
      */
-    boolean checkTimeConflict(Long teacherId, String academicYear, Integer weekNumber, Integer dayOfWeek, Integer timeSlot, Long classId);
+    Boolean checkTimeConflict(String academicYear, Integer weekNumber, Integer dayOfWeek, Integer timeSlot, Long classId);
     
     /**
      * 获取可选择的课程列表（教师申请通过的课程）
      */
-    List<Map<String, Object>> getAvailableCourses(Long teacherId, String academicYear);
+    List<Map<String, Object>> getAvailableCourses(String academicYear);
     
     /**
      * 获取指定班级的可用课程列表（显示该班级的剩余课时）
      */
-    List<Map<String, Object>> getAvailableCoursesForClass(Long teacherId, Long classId, String academicYear);
+    List<Map<String, Object>> getAvailableCoursesForClass(Long classId, String academicYear);
     
     /**
      * 获取教师分配的班级列表
      */
-    List<Map<String, Object>> getTeacherClasses(Long teacherId);
+    List<Map<String, Object>> getTeacherClasses();
     
     /**
      * 管理员获取所有教师的课程表

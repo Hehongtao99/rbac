@@ -1,55 +1,45 @@
 package com.example.service;
 
-import com.example.entity.CourseApplication;
-import com.example.entity.CourseTemplate;
-import com.example.entity.User;
-import com.example.mapper.CourseApplicationMapper;
-import com.example.mapper.CourseTemplateMapper;
-import com.example.common.Result;
 import com.example.common.PageResult;
-import com.example.util.PageUtil;
-import com.example.util.UserContextUtil;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
-import java.time.LocalDateTime;
-import java.util.List;
+import com.example.dto.CourseApplicationDTO;
+import com.example.dto.CourseApplicationQueryDTO;
+import com.example.dto.CourseApplicationReviewDTO;
+import com.example.vo.CourseApplicationVO;
 
 public interface CourseApplicationService {
     
     /**
-     * 获取申请列表（教师端）
+     * 分页获取申请列表
      */
-    Result<Object> getApplicationList(Integer page, Integer size, String keyword);
+    PageResult<CourseApplicationVO> getApplicationList(CourseApplicationQueryDTO queryDTO);
     
     /**
-     * 获取申请列表（管理员端）
+     * 管理员分页获取申请列表
      */
-    Result<Object> getApplicationListForAdmin(Integer page, Integer size, String keyword);
+    PageResult<CourseApplicationVO> getApplicationListForAdmin(CourseApplicationQueryDTO queryDTO);
     
     /**
      * 创建申请
      */
-    Result<Object> createApplication(CourseApplication application);
+    void createApplication(CourseApplicationDTO applicationDTO);
     
     /**
      * 更新申请
      */
-    Result<Object> updateApplication(CourseApplication application);
+    void updateApplication(Long id, CourseApplicationDTO applicationDTO);
     
     /**
      * 审核申请
      */
-    Result<Object> reviewApplication(Long id, Integer status, String reviewComment);
+    void reviewApplication(Long id, CourseApplicationReviewDTO reviewDTO);
     
     /**
      * 删除申请
      */
-    Result<Object> deleteApplication(Long id);
+    void deleteApplication(Long id);
     
     /**
      * 根据ID获取申请详情
      */
-    Result<Object> getApplicationById(Long id);
+    CourseApplicationVO getApplicationById(Long id);
 } 

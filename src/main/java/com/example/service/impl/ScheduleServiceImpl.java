@@ -74,7 +74,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         }
         
         // 检查时间冲突 - 检查该教师在该时间段是否已有任何班级的课程
-        boolean conflict = checkTimeConflict(teacherId, 
+        Boolean conflict = checkTimeConflict(
                 scheduleDTO.getAcademicYear(), scheduleDTO.getWeekNumber(), 
                 scheduleDTO.getDayOfWeek(), scheduleDTO.getTimeSlot(), null); // 传入null检查所有班级
         if (conflict) {
@@ -206,50 +206,71 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     @Override
-    public List<ScheduleVO> getTeacherSchedule(Long teacherId, String academicYear) {
+    public List<ScheduleVO> getTeacherSchedule(String academicYear) {
+        // 获取当前登录用户信息
+        User currentUser = userContextUtil.getCurrentUser();
+        if (currentUser == null) {
+            throw new RuntimeException("获取当前用户信息失败，请重新登录");
+        }
+        
+        Long teacherId = currentUser.getId();
+        
         List<Schedule> schedules = scheduleMapper.selectByTeacherAndAcademicYear(teacherId, academicYear);
-        return schedules.stream().map(this::convertToVO).collect(Collectors.toList());
+        return schedules.stream()
+                .map(this::convertToVO)
+                .collect(Collectors.toList());
     }
 
     @Override
-    public Map<String, List<ScheduleVO>> getWeeklySchedule(Long teacherId, String academicYear, Integer weekNumber) {
-        // 从JWT获取当前登录用户信息
+    public Map<String, List<ScheduleVO>> getWeeklySchedule(String academicYear, Integer weekNumber) {
+        // 获取当前登录用户信息
         User currentUser = userContextUtil.getCurrentUser();
         if (currentUser == null) {
             throw new RuntimeException("获取当前用户信息失败，请重新登录");
         }
         
-        // 使用JWT获取的用户ID，忽略传入的teacherId参数
-        Long actualTeacherId = currentUser.getId();
+        Long teacherId = currentUser.getId();
         
-        List<Schedule> schedules = scheduleMapper.selectByTeacherAndAcademicYearAndWeekNumber(actualTeacherId, academicYear, weekNumber);
-        List<ScheduleVO> scheduleVOs = schedules.stream().map(this::convertToVO).collect(Collectors.toList());
+        List<Schedule> schedules = scheduleMapper.selectByTeacherAndAcademicYearAndWeekNumber(teacherId, academicYear, weekNumber);
         
         // 按星期分组
-        return scheduleVOs.stream().collect(Collectors.groupingBy(ScheduleVO::getDayOfWeekName));
+        Map<String, List<ScheduleVO>> weeklySchedule = new HashMap<>();
+        for (int i = 1; i <= 7; i++) {
+            weeklySchedule.put(String.valueOf(i), new ArrayList<>());
+        }
+        
+        schedules.forEach(schedule -> {
+            String dayKey = String.valueOf(schedule.getDayOfWeek());
+            weeklySchedule.get(dayKey).add(convertToVO(schedule));
+        });
+        
+        return weeklySchedule;
     }
 
     @Override
-    public Map<String, List<ScheduleVO>> getWeeklyScheduleByClass(Long teacherId, String academicYear, Integer weekNumber, Long classId) {
-        // 从JWT获取当前登录用户信息
+    public Map<String, List<ScheduleVO>> getWeeklyScheduleByClass(String academicYear, Integer weekNumber, Long classId) {
+        // 获取当前登录用户信息
         User currentUser = userContextUtil.getCurrentUser();
         if (currentUser == null) {
             throw new RuntimeException("获取当前用户信息失败，请重新登录");
         }
         
-        // 使用JWT获取的用户ID
-        Long actualTeacherId = currentUser.getId();
+        Long teacherId = currentUser.getId();
         
-        // 验证教师是否有权限查看该班级
-        if (classId != null && !teacherClassService.hasClassPermission(actualTeacherId, classId)) {
-            throw new RuntimeException("您没有权限查看该班级的课程表");
-        }
-        
-        List<Schedule> schedules = scheduleMapper.selectByTeacherAndAcademicYearAndWeekNumberAndClassId(actualTeacherId, academicYear, weekNumber, classId);
-        List<ScheduleVO> scheduleVOs = schedules.stream().map(this::convertToVO).collect(Collectors.toList());
+        List<Schedule> schedules = scheduleMapper.selectByTeacherAndAcademicYearAndWeekNumberAndClassId(teacherId, academicYear, weekNumber, classId);
         
         // 按星期分组
-        return scheduleVOs.stream().collect(Collectors.groupingBy(ScheduleVO::getDayOfWeekName));
+        Map<String, List<ScheduleVO>> weeklySchedule = new HashMap<>();
+        for (int i = 1; i <= 7; i++) {
+            weeklySchedule.put(String.valueOf(i), new ArrayList<>());
+        }
+        
+        schedules.forEach(schedule -> {
+            String dayKey = String.valueOf(schedule.getDayOfWeek());
+            weeklySchedule.get(dayKey).add(convertToVO(schedule));
+        });
+        
+        return weeklySchedule;
     }
 
     @Override
@@ -301,92 +322,88 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     @Override
-    public boolean checkTimeConflict(Long teacherId, String academicYear, Integer weekNumber, Integer dayOfWeek, Integer timeSlot, Long classId) {
-        // 从JWT获取当前登录用户信息
+    public Boolean checkTimeConflict(String academicYear, Integer weekNumber, Integer dayOfWeek, Integer timeSlot, Long classId) {
+        // 获取当前登录用户信息
         User currentUser = userContextUtil.getCurrentUser();
         if (currentUser == null) {
             throw new RuntimeException("获取当前用户信息失败，请重新登录");
         }
         
-        // 使用JWT获取的用户ID，忽略传入的teacherId参数
-        Long actualTeacherId = currentUser.getId();
+        Long teacherId = currentUser.getId();
         
-        List<Schedule> conflicts = scheduleMapper.selectConflict(actualTeacherId, weekNumber, dayOfWeek, timeSlot);
+        List<Schedule> conflicts = scheduleMapper.selectConflict(teacherId, weekNumber, dayOfWeek, timeSlot);
         
-        // 如果指定了班级，检查该班级的时间冲突
-        // 如果没有指定班级（classId为null），检查该教师在该时间段是否已经有任何班级的课程
+        // 如果指定了班级，只检查该班级的冲突
         if (classId != null) {
             conflicts = conflicts.stream()
-                    .filter(s -> s.getClassId().equals(classId))
+                    .filter(schedule -> schedule.getClassId().equals(classId))
                     .collect(Collectors.toList());
         }
-        // 当classId为null时，不添加班级条件，这样会检查该教师在该时间段的所有班级课程
         
         return !conflicts.isEmpty();
     }
 
     @Override
-    public List<Map<String, Object>> getAvailableCourses(Long teacherId, String academicYear) {
-        // 从JWT获取当前登录用户信息
+    public List<Map<String, Object>> getAvailableCourses(String academicYear) {
+        // 获取当前登录用户信息
         User currentUser = userContextUtil.getCurrentUser();
         if (currentUser == null) {
             throw new RuntimeException("获取当前用户信息失败，请重新登录");
         }
         
-        // 使用JWT获取的用户ID，忽略传入的teacherId参数
-        Long actualTeacherId = currentUser.getId();
-        System.out.println("=== getAvailableCourses ===");
-        System.out.println("当前教师ID: " + actualTeacherId);
-        System.out.println("学年: " + academicYear);
+        Long teacherId = currentUser.getId();
         
-        // 查询教师申请通过的课程申请
-        List<CourseApplication> applications = courseApplicationMapper.selectByTeacherIdAndAcademicYearAndStatus(actualTeacherId, academicYear, 1);
-        System.out.println("找到的申请记录数: " + applications.size());
+        // 查询该教师已通过审核的申请
+        CourseApplication queryApplication = new CourseApplication();
+        queryApplication.setTeacherId(teacherId);
+        queryApplication.setStatus(1); // 已通过
+        queryApplication.setAcademicYear(academicYear);
+        
+        List<CourseApplication> applications = courseApplicationMapper.selectList(queryApplication);
         
         return applications.stream()
                 .map(application -> {
-                    Map<String, Object> map = new HashMap<>();
-                    Integer remainingHours = application.getRemainingHours();
-                    if (remainingHours == null) {
-                        remainingHours = application.getCourseHours();
-                    }
-                    map.put("value", application.getId());
-                    map.put("label", application.getCourseName() + "（总课时" + application.getCourseHours() + "）");
-                    map.put("courseHours", application.getCourseHours());
-                    map.put("remainingHours", remainingHours);
-                    map.put("courseName", application.getCourseName());
-                    return map;
-                }).collect(Collectors.toList());
+                    Map<String, Object> courseInfo = new HashMap<>();
+                    courseInfo.put("id", application.getId());
+                    courseInfo.put("courseName", application.getCourseName());
+                    courseInfo.put("courseHours", application.getCourseHours());
+                    courseInfo.put("remainingHours", application.getRemainingHours());
+                    courseInfo.put("maxStudents", application.getMaxStudents());
+                    courseInfo.put("academicYear", application.getAcademicYear());
+                    courseInfo.put("semester", application.getSemester());
+                    return courseInfo;
+                })
+                .collect(Collectors.toList());
     }
     
     /**
      * 获取教师在指定班级的可用课程列表（显示该班级的剩余课时）
      */
-    public List<Map<String, Object>> getAvailableCoursesForClass(Long teacherId, Long classId, String academicYear) {
-        // 从JWT获取当前登录用户信息
+    public List<Map<String, Object>> getAvailableCoursesForClass(Long classId, String academicYear) {
+        // 获取当前登录用户信息
         User currentUser = userContextUtil.getCurrentUser();
         if (currentUser == null) {
             throw new RuntimeException("获取当前用户信息失败，请重新登录");
         }
         
-        // 使用JWT获取的用户ID
-        Long actualTeacherId = currentUser.getId();
+        Long teacherId = currentUser.getId();
         
-        return classCourseHoursService.getAvailableCoursesForClass(actualTeacherId, classId, academicYear);
+        // 获取该教师该班级的课程课时信息
+        return classCourseHoursService.getAvailableCoursesForClass(teacherId, classId, academicYear);
     }
 
     @Override
-    public List<Map<String, Object>> getTeacherClasses(Long teacherId) {
-        // 从JWT获取当前登录用户信息
+    public List<Map<String, Object>> getTeacherClasses() {
+        // 获取当前登录用户信息
         User currentUser = userContextUtil.getCurrentUser();
         if (currentUser == null) {
             throw new RuntimeException("获取当前用户信息失败，请重新登录");
         }
         
-        // 使用JWT获取的用户ID
-        Long actualTeacherId = currentUser.getId();
+        Long teacherId = currentUser.getId();
         
-        return teacherClassService.getTeacherClasses(actualTeacherId);
+        // 获取该教师分配的班级
+        return teacherClassService.getTeacherClasses(teacherId);
     }
 
     @Override

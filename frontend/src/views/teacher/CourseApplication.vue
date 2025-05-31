@@ -160,7 +160,8 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Document } from '@element-plus/icons-vue'
-import request from '../../utils/request'
+import { getEnabledCourseTemplateList } from '../../api/courseTemplate'
+import { createCourseApplication } from '../../api/courseApplication'
 
 export default {
   name: 'CourseApplication',
@@ -214,7 +215,7 @@ export default {
           semester: searchForm.semester
         }
         
-        const response = await request.get('/course-templates/enabled', { params })
+        const response = await getEnabledCourseTemplateList(params)
         
         if (response.code === 200) {
           templateList.value = response.data.records || []
@@ -267,7 +268,7 @@ export default {
           reason: applicationForm.reason
         }
 
-        const response = await request.post('/course-applications', submitData)
+        const response = await createCourseApplication(submitData)
         
         if (response.code === 200) {
           ElMessage.success('申请提交成功')

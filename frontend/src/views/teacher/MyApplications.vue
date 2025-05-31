@@ -241,7 +241,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import request from '../../utils/request'
+import { getCourseApplicationList, updateCourseApplication, deleteCourseApplication } from '../../api/courseApplication'
 
 export default {
   name: 'MyApplications',
@@ -296,7 +296,7 @@ export default {
         }
         
         console.log('=== 前端发送请求参数 ===', params)
-        const response = await request.get('/course-applications', { params })
+        const response = await getCourseApplicationList(params)
         console.log('=== 前端收到完整响应 ===', response)
         console.log('=== 响应数据结构 ===', response.data)
         console.log('=== records数组 ===', response.data?.records)
@@ -375,7 +375,7 @@ export default {
         await editFormRef.value.validate()
         editLoading.value = true
 
-        const response = await request.put(`/course-applications/${editForm.id}`, editForm)
+        const response = await updateCourseApplication(editForm.id, editForm)
         
         if (response.code === 200) {
           ElMessage.success('更新成功')
@@ -399,7 +399,7 @@ export default {
           type: 'warning'
         })
 
-        const response = await request.delete(`/course-applications/${id}`)
+        const response = await deleteCourseApplication(id)
         
         if (response.code === 200) {
           ElMessage.success('删除成功')

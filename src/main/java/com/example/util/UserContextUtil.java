@@ -9,6 +9,10 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+/**
+ * 用户上下文工具类
+ * 用于获取当前登录用户信息
+ */
 @Component
 public class UserContextUtil {
     
@@ -25,58 +29,28 @@ public class UserContextUtil {
         try {
             ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
             if (attributes == null) {
-                System.err.println("UserContextUtil: RequestAttributes is null");
                 return null;
             }
             
             HttpServletRequest request = attributes.getRequest();
-            System.out.println("=== UserContextUtil.getCurrentUser() 开始 ===");
-            System.out.println("UserContextUtil: 请求URI = " + request.getRequestURI());
-            
-            String token = request.getHeader("Authorization");
-            System.out.println("UserContextUtil: Authorization header = " + token);
-            
+            String token = extractToken(request);
             if (token == null) {
-                System.err.println("UserContextUtil: Authorization header is null");
-                return null;
-            }
-            
-            if (!token.startsWith("Bearer ")) {
-                System.err.println("UserContextUtil: Authorization header does not start with Bearer");
-                return null;
-            }
-            
-            token = token.substring(7);
-            if (token.isEmpty()) {
-                System.err.println("UserContextUtil: Token is empty after removing Bearer prefix");
                 return null;
             }
             
             // 验证token是否有效
             if (!jwtUtil.validateToken(token)) {
-                System.err.println("UserContextUtil: Token validation failed");
                 return null;
             }
             
             String username = jwtUtil.getUsernameFromToken(token);
             if (username == null || username.isEmpty()) {
-                System.err.println("UserContextUtil: Username from token is null or empty");
                 return null;
             }
             
             // 根据用户名查询用户信息
-            User user = userMapper.selectByUsername(username);
-            
-            if (user == null) {
-                System.err.println("UserContextUtil: User not found for username: " + username);
-                return null;
-            }
-            
-            System.out.println("UserContextUtil: Successfully found user: " + user.getUsername() + " (" + user.getNickname() + ")");
-            return user;
+            return userMapper.selectByUsername(username);
         } catch (Exception e) {
-            System.err.println("UserContextUtil: Exception occurred: " + e.getMessage());
-            e.printStackTrace();
             return null;
         }
     }
@@ -90,10 +64,61 @@ public class UserContextUtil {
     }
     
     /**
-     * 获取当前登录用户名称
+     * 获取当前登录用户名
      */
-    public String getCurrentUserName() {
+    public String getCurrentUsername() {
+        try {
+            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attributes == null) {
+                return null;
+            }
+            
+            HttpServletRequest request = attributes.getRequest();
+            String token = extractToken(request);
+            if (token == null) {
+                return null;
+            }
+            
+            return jwtUtil.getUsernameFromToken(token);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    
+    /**
+     * 获取当前登录用户昵称
+     */
+    public String getCurrentUserNickname() {
         User user = getCurrentUser();
-        return user != null ? user.getNickname() : null;
+        return user != null ? (user.getNickname() != null ? user.getNickname() : user.getUsername()) : null;
+    }
+    
+    /**
+     * 检查当前请求是否已认证
+     */
+    public boolean isAuthenticated() {
+        try {
+            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attributes == null) {
+                return false;
+            }
+            
+            HttpServletRequest request = attributes.getRequest();
+            String token = extractToken(request);
+            return token != null && jwtUtil.validateToken(token);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    
+    /**
+     * 从请求头中提取token
+     */
+    private String extractToken(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+        return null;
     }
 } 

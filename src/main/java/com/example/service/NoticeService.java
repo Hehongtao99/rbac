@@ -19,7 +19,7 @@ public interface NoticeService {
     /**
      * 新增通知
      */
-    void addNotice(NoticeDTO noticeDTO, Long publisherId, String publisherName);
+    void addNotice(NoticeDTO noticeDTO);
     
     /**
      * 编辑通知

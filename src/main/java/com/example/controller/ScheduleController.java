@@ -2,6 +2,7 @@ package com.example.controller;
 
 import com.example.common.Result;
 import com.example.dto.ScheduleDTO;
+import com.example.dto.TimeConflictCheckDTO;
 import com.example.entity.TimeSlotConfig;
 import com.example.service.ScheduleService;
 import com.example.service.TimeSlotConfigService;
@@ -12,8 +13,12 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 课程表控制器
+ */
 @RestController
 @RequestMapping("/api/schedule")
+@CrossOrigin
 public class ScheduleController {
 
     @Autowired
@@ -41,48 +46,44 @@ public class ScheduleController {
     }
 
     /**
-     * 获取教师的课程表 - 从JWT获取teacherId
+     * 获取教师的课程表
      */
     @GetMapping("/teacher")
     public Result<List<ScheduleVO>> getTeacherSchedule(@RequestParam String academicYear) {
-        List<ScheduleVO> schedule = scheduleService.getTeacherSchedule(null, academicYear);
+        List<ScheduleVO> schedule = scheduleService.getTeacherSchedule(academicYear);
         return Result.success(schedule);
     }
 
     /**
-     * 获取某周的课程表 - 从JWT获取teacherId
+     * 获取某周的课程表
      */
     @GetMapping("/weekly")
     public Result<Map<String, List<ScheduleVO>>> getWeeklySchedule(
             @RequestParam String academicYear, 
             @RequestParam Integer weekNumber) {
-        Map<String, List<ScheduleVO>> schedule = scheduleService.getWeeklySchedule(null, academicYear, weekNumber);
+        Map<String, List<ScheduleVO>> schedule = scheduleService.getWeeklySchedule(academicYear, weekNumber);
         return Result.success(schedule);
     }
 
     /**
-     * 获取某个班级某周的课程表 - 从JWT获取teacherId
+     * 获取某个班级某周的课程表
      */
     @GetMapping("/weekly/class")
     public Result<Map<String, List<ScheduleVO>>> getWeeklyScheduleByClass(
             @RequestParam String academicYear, 
             @RequestParam Integer weekNumber,
             @RequestParam(required = false) Long classId) {
-        Map<String, List<ScheduleVO>> schedule = scheduleService.getWeeklyScheduleByClass(null, academicYear, weekNumber, classId);
+        Map<String, List<ScheduleVO>> schedule = scheduleService.getWeeklyScheduleByClass(academicYear, weekNumber, classId);
         return Result.success(schedule);
     }
 
     /**
-     * 获取教师分配的班级列表 - 从JWT获取teacherId
+     * 获取教师分配的班级列表
      */
     @GetMapping("/teacher-classes")
     public Result<List<Map<String, Object>>> getTeacherClasses() {
-        try {
-            List<Map<String, Object>> classes = scheduleService.getTeacherClasses(null);
-            return Result.success(classes);
-        } catch (Exception e) {
-            return Result.error(e.getMessage());
-        }
+        List<Map<String, Object>> classes = scheduleService.getTeacherClasses();
+        return Result.success(classes);
     }
 
     /**
@@ -120,48 +121,38 @@ public class ScheduleController {
     }
 
     /**
-     * 检查时间冲突 - 从JWT获取teacherId
+     * 检查时间冲突
      */
-    @GetMapping("/check-conflict")
-    public Result<Boolean> checkTimeConflict(@RequestParam String academicYear,
-                                           @RequestParam Integer weekNumber,
-                                           @RequestParam Integer dayOfWeek,
-                                           @RequestParam Integer timeSlot,
-                                           @RequestParam(required = false) Long classId) {
-        try {
-            boolean conflict = scheduleService.checkTimeConflict(null, academicYear, weekNumber, dayOfWeek, timeSlot, classId);
-            return Result.success(conflict);
-        } catch (Exception e) {
-            return Result.error(e.getMessage());
-        }
+    @PostMapping("/check-conflict")
+    public Result<Boolean> checkTimeConflict(@RequestBody TimeConflictCheckDTO checkDTO) {
+        Boolean conflict = scheduleService.checkTimeConflict(
+            checkDTO.getAcademicYear(), 
+            checkDTO.getWeekNumber(), 
+            checkDTO.getDayOfWeek(), 
+            checkDTO.getTimeSlot(), 
+            checkDTO.getClassId()
+        );
+        return Result.success(conflict);
     }
 
     /**
-     * 获取可选择的课程列表 - 从JWT获取teacherId
+     * 获取可选择的课程列表
      */
     @GetMapping("/available-courses")
     public Result<List<Map<String, Object>>> getAvailableCourses(@RequestParam String academicYear) {
-        try {
-            List<Map<String, Object>> courses = scheduleService.getAvailableCourses(null, academicYear);
-            return Result.success(courses);
-        } catch (Exception e) {
-            return Result.error(e.getMessage());
-        }
+        List<Map<String, Object>> courses = scheduleService.getAvailableCourses(academicYear);
+        return Result.success(courses);
     }
 
     /**
-     * 获取指定班级的可用课程列表（显示该班级的剩余课时）- 从JWT获取teacherId
+     * 获取指定班级的可用课程列表
      */
     @GetMapping("/available-courses/class")
     public Result<List<Map<String, Object>>> getAvailableCoursesForClass(
             @RequestParam String academicYear,
             @RequestParam Long classId) {
-        try {
-            List<Map<String, Object>> courses = scheduleService.getAvailableCoursesForClass(null, classId, academicYear);
-            return Result.success(courses);
-        } catch (Exception e) {
-            return Result.error(e.getMessage());
-        }
+        List<Map<String, Object>> courses = scheduleService.getAvailableCoursesForClass(classId, academicYear);
+        return Result.success(courses);
     }
 
     /**
@@ -169,13 +160,7 @@ public class ScheduleController {
      */
     @GetMapping("/time-slots")
     public Result<List<TimeSlotConfig>> getAllTimeSlots() {
-        System.out.println("=== getAllTimeSlots 开始 ===");
         List<TimeSlotConfig> timeSlots = timeSlotConfigService.getAllTimeSlots();
-        System.out.println("=== getAllTimeSlots 结果 ===");
-        System.out.println("时间段数量: " + timeSlots.size());
-        for (TimeSlotConfig timeSlot : timeSlots) {
-            System.out.println("时间段: " + timeSlot.getTimeSlot() + " - " + timeSlot.getSlotName() + " (" + timeSlot.getStartTime() + "-" + timeSlot.getEndTime() + ")");
-        }
         return Result.success(timeSlots);
     }
 

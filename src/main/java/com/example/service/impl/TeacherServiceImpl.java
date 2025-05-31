@@ -1,25 +1,27 @@
 package com.example.service.impl;
 
+import com.example.common.PageResult;
+import com.example.dto.TeacherDTO;
 import com.example.entity.Teacher;
 import com.example.entity.User;
 import com.example.entity.Role;
 import com.example.entity.UserRole;
-import com.example.dto.TeacherDTO;
 import com.example.mapper.TeacherMapper;
 import com.example.mapper.UserMapper;
 import com.example.mapper.RoleMapper;
 import com.example.mapper.UserRoleMapper;
 import com.example.service.TeacherService;
-import com.example.common.Result;
-import com.example.common.PageResult;
 import com.example.util.PageUtil;
+import com.example.vo.TeacherVO;
+import com.example.dto.TeacherPageDTO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,86 +39,87 @@ public class TeacherServiceImpl implements TeacherService {
     @Autowired
     private UserRoleMapper userRoleMapper;
 
-    @Override
-    public Result<Object> getTeacherList(Integer page, Integer size, String keyword) {
-        int offset = PageUtil.calculateOffset(page, size);
-        List<Teacher> teachers = teacherMapper.selectPage(offset, size, keyword);
-        long total = teacherMapper.selectCount(new Teacher());
-        
-        PageResult<Teacher> result = PageUtil.createPageResult(page, size, total, teachers);
-        return Result.success(result);
+    // 状态映射
+    private static final Map<Integer, String> STATUS_MAP = new HashMap<>();
+    
+    static {
+        STATUS_MAP.put(0, "禁用");
+        STATUS_MAP.put(1, "启用");
     }
 
     @Override
-    public Result<Object> createTeacher(TeacherDTO teacherDTO) {
-        // 检查工号是否已存在
-        Teacher existTeacher = teacherMapper.selectByTeacherNo(teacherDTO.getTeacherNo());
+    public PageResult<TeacherVO> getTeacherList(TeacherPageDTO pageDTO) {
+        int offset = PageUtil.calculateOffset(pageDTO.getPage(), pageDTO.getSize());
         
-        if (existTeacher != null) {
-            return Result.error("教师工号已存在");
+        List<Teacher> teachers = teacherMapper.selectPage(offset, pageDTO.getSize(), pageDTO.getKeyword());
+        long total = teacherMapper.selectCount(new Teacher());
+        
+        // 转换为VO
+        List<TeacherVO> voList = teachers.stream()
+                .map(this::convertToVO)
+                .collect(Collectors.toList());
+        
+        return PageUtil.createPageResult(pageDTO.getPage(), pageDTO.getSize(), total, voList);
+    }
+
+    @Override
+    public void createTeacher(TeacherDTO teacherDTO) {
+        Teacher teacher = new Teacher();
+        BeanUtils.copyProperties(teacherDTO, teacher);
+        
+        teacher.setCreateTime(LocalDateTime.now());
+        teacher.setUpdateTime(LocalDateTime.now());
+        teacher.setStatus(1);
+        teacher.setDeleted(0);
+        
+        teacherMapper.insert(teacher);
+    }
+
+    @Override
+    public void updateTeacher(Long id, TeacherDTO teacherDTO) {
+        Teacher existingTeacher = teacherMapper.selectById(id);
+        if (existingTeacher == null) {
+            throw new RuntimeException("教师不存在");
         }
         
         Teacher teacher = new Teacher();
         BeanUtils.copyProperties(teacherDTO, teacher);
-        teacher.setStatus(1); // 默认启用
-        teacher.setCreateTime(LocalDateTime.now());
+        teacher.setId(id);
         teacher.setUpdateTime(LocalDateTime.now());
-        teacher.setDeleted(0);
         
-        int result = teacherMapper.insert(teacher);
-        if (result > 0) {
-            return Result.success("教师创建成功");
-        } else {
-            return Result.error("教师创建失败");
-        }
+        teacherMapper.updateById(teacher);
     }
 
     @Override
-    public Result<Object> updateTeacher(Long id, TeacherDTO teacherDTO) {
-        Teacher existTeacher = teacherMapper.selectById(id);
-        if (existTeacher == null) {
-            return Result.error("教师不存在");
-        }
-        
-        // 检查工号是否已被其他教师使用
-        Teacher duplicateTeacher = teacherMapper.selectByTeacherNo(teacherDTO.getTeacherNo());
-        if (duplicateTeacher != null && !duplicateTeacher.getId().equals(id)) {
-            return Result.error("教师工号已被其他教师使用");
-        }
-        
-        BeanUtils.copyProperties(teacherDTO, existTeacher);
-        existTeacher.setUpdateTime(LocalDateTime.now());
-        
-        int result = teacherMapper.updateById(existTeacher);
-        if (result > 0) {
-            return Result.success("教师更新成功");
-        } else {
-            return Result.error("教师更新失败");
-        }
-    }
-
-    @Override
-    public Result<Object> deleteTeacher(Long id) {
+    public void deleteTeacher(Long id) {
         Teacher teacher = teacherMapper.selectById(id);
         if (teacher == null) {
-            return Result.error("教师不存在");
+            throw new RuntimeException("教师不存在");
         }
         
-        int result = teacherMapper.deleteById(id);
-        if (result > 0) {
-            return Result.success("教师删除成功");
-        } else {
-            return Result.error("教师删除失败");
-        }
+        teacherMapper.deleteById(id);
     }
 
     @Override
-    public Result<Object> getTeacherById(Long id) {
+    public TeacherVO getTeacherById(Long id) {
         Teacher teacher = teacherMapper.selectById(id);
         if (teacher == null) {
-            return Result.error("教师不存在");
+            throw new RuntimeException("教师不存在");
         }
         
-        return Result.success(teacher);
+        return convertToVO(teacher);
+    }
+    
+    /**
+     * 转换为VO对象
+     */
+    private TeacherVO convertToVO(Teacher teacher) {
+        TeacherVO vo = new TeacherVO();
+        BeanUtils.copyProperties(teacher, vo);
+        
+        // 设置状态名称
+        vo.setStatusName(STATUS_MAP.get(teacher.getStatus()));
+        
+        return vo;
     }
 } 

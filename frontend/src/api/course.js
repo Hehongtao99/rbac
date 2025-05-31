@@ -4,8 +4,8 @@ import request from '../utils/request'
 export const getCourseList = (params) => {
   return request({
     url: '/course/list',
-    method: 'get',
-    params
+    method: 'post',
+    data: params
   })
 }
 
@@ -13,8 +13,8 @@ export const getCourseList = (params) => {
 export const getCourseTemplateList = (params) => {
   return request({
     url: '/course/template-list',
-    method: 'get',
-    params
+    method: 'post',
+    data: params
   })
 }
 
@@ -22,8 +22,8 @@ export const getCourseTemplateList = (params) => {
 export const getCourseInstanceList = (params) => {
   return request({
     url: '/course/instance-list',
-    method: 'get',
-    params
+    method: 'post',
+    data: params
   })
 }
 
