@@ -237,4 +237,19 @@
         </where>
     </select>
 
+    <!-- 根据学生ID查询学生课程表 -->
+    <select id="selectStudentSchedule" resultMap="BaseResultMap">
+        SELECT DISTINCT s.id, s.course_id, s.course_name, s.teacher_id, s.teacher_name, 
+               s.class_id, s.class_name, s.class_course_hours_id, s.academic_year, 
+               s.week_number, s.day_of_week, s.time_slot, s.time_range, s.reduced_hours,
+               s.create_time, s.update_time, s.deleted
+        FROM sys_schedule s
+        INNER JOIN sys_student_course_selection scs ON s.course_id = scs.course_application_id
+        WHERE scs.student_id = #{studentId}
+          AND scs.status = 1
+          AND scs.deleted = 0
+          AND s.deleted = 0
+        ORDER BY s.week_number ASC, s.day_of_week ASC, s.time_slot ASC
+    </select>
+
 </mapper> 

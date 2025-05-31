@@ -11,7 +11,7 @@
         <div class="card-header">
           <span>课程表管理 
             <span v-if="filterForm.weekNumber" class="header-info">
-              - {{ filterForm.academicYear }} 第{{ filterForm.weekNumber }}周
+              - {{ filterForm.academicYear }} {{ filterForm.semester }} 第{{ filterForm.weekNumber }}周
               <span v-if="filterForm.classId">
                 ({{ getSelectedClassName() }})
               </span>
@@ -19,7 +19,7 @@
             </span>
           </span>
           <div class="header-controls">
-            <el-button type="primary" @click="showQuickAdd = true">快速添加</el-button>
+            <el-button type="primary" @click="showQuickAdd = true" :disabled="!filterForm.semester">快速添加</el-button>
           </div>
         </div>
       </template>
@@ -31,6 +31,12 @@
             <el-select v-model="filterForm.academicYear" placeholder="选择学年" @change="onFilterChange" style="width: 150px;">
               <el-option label="2024-2025" value="2024-2025"></el-option>
               <el-option label="2023-2024" value="2023-2024"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="学期">
+            <el-select v-model="filterForm.semester" placeholder="选择学期" @change="onFilterChange" style="width: 120px;">
+              <el-option label="第一学期" value="第一学期"></el-option>
+              <el-option label="第二学期" value="第二学期"></el-option>
             </el-select>
           </el-form-item>
           <el-form-item label="班级">
@@ -218,6 +224,12 @@
     <!-- 添加课程对话框 -->
     <el-dialog v-model="showAddDialog" title="添加课程" width="450px">
       <el-form :model="addForm" :rules="addRules" ref="addFormRef" label-width="80px">
+        <el-form-item label="学年">
+          <el-input :value="filterForm.academicYear" readonly />
+        </el-form-item>
+        <el-form-item label="学期">
+          <el-input :value="filterForm.semester" readonly />
+        </el-form-item>
         <el-form-item label="课程" prop="courseId">
           <el-select v-model="addForm.courseId" placeholder="请选择课程" style="width: 100%">
             <el-option 
@@ -259,9 +271,15 @@
       </template>
     </el-dialog>
 
-    <!-- 快速添加对话框 -->
+    <!-- 快速添加课程对话框 -->
     <el-dialog v-model="showQuickAdd" title="快速添加课程" width="500px">
       <el-form :model="quickAddForm" :rules="quickAddRules" ref="quickAddFormRef" label-width="80px">
+        <el-form-item label="学年">
+          <el-input :value="filterForm.academicYear" readonly />
+        </el-form-item>
+        <el-form-item label="学期">
+          <el-input :value="filterForm.semester" readonly />
+        </el-form-item>
         <el-form-item label="课程" prop="courseId">
           <el-select v-model="quickAddForm.courseId" placeholder="请选择课程" style="width: 100%">
             <el-option 
@@ -382,6 +400,7 @@ export default {
       currentUserId: null, // 当前登录用户ID
       filterForm: {
         academicYear: '2024-2025',
+        semester: '第一学期',
         weekNumber: null,
         classId: null
       },
@@ -551,6 +570,7 @@ export default {
     saveViewPosition() {
       const viewPosition = {
         academicYear: this.filterForm.academicYear,
+        semester: this.filterForm.semester,
         weekNumber: this.filterForm.weekNumber,
         classId: this.filterForm.classId,
         timestamp: Date.now()
@@ -568,6 +588,7 @@ export default {
           const isRecent = Date.now() - viewPosition.timestamp < 24 * 60 * 60 * 1000
           if (isRecent) {
             this.filterForm.academicYear = viewPosition.academicYear || '2024-2025'
+            this.filterForm.semester = viewPosition.semester || '第一学期'
             this.filterForm.weekNumber = viewPosition.weekNumber
             this.filterForm.classId = viewPosition.classId
           }
@@ -618,13 +639,20 @@ export default {
 
     async loadAvailableCourses(classId = null) {
       try {
+        // 检查是否选择了学期
+        if (!this.filterForm.semester) {
+          ElMessage.warning('请先选择学期')
+          this.availableCourses = []
+          return
+        }
+        
         let response
         if (classId) {
           // 如果指定了班级，获取该班级的可用课程（显示该班级的剩余课时）
-          response = await scheduleApi.getAvailableCoursesForClass(this.filterForm.academicYear, classId)
+          response = await scheduleApi.getAvailableCoursesForClass(this.filterForm.academicYear, this.filterForm.semester, classId)
         } else {
           // 否则获取所有可用课程（显示总课时）
-          response = await scheduleApi.getAvailableCourses(this.filterForm.academicYear)
+          response = await scheduleApi.getAvailableCourses(this.filterForm.academicYear, this.filterForm.semester)
         }
         
         if (response.code === 200) {
@@ -635,7 +663,8 @@ export default {
             courseName: course.courseName,
             id: course.id,
             remainingHours: course.remainingHours || course.courseHours,
-            courseHours: course.courseHours
+            courseHours: course.courseHours,
+            semester: course.semester
           }))
           
           console.log('加载的可用课程:', this.availableCourses)
@@ -815,6 +844,7 @@ export default {
           classId: this.addForm.classId,
           className: selectedClass.name,
           academicYear: this.filterForm.academicYear,
+          semester: this.filterForm.semester,
           weekNumber: this.filterForm.weekNumber,
           dayOfWeek: this.addForm.dayOfWeek,
           timeSlot: this.addForm.timeSlot,
@@ -876,6 +906,7 @@ export default {
             classId: this.quickAddForm.classId,
             className: selectedClass?.name || '',
             academicYear: this.filterForm.academicYear,
+            semester: this.filterForm.semester,
             weekNumber: weekNumber,
             dayOfWeek: this.quickAddForm.dayOfWeek,
             timeSlot: this.quickAddForm.timeSlot,
@@ -971,7 +1002,7 @@ export default {
         this.$refs.addFormRef.clearValidate('courseId')
       }
       
-      // 重新加载该班级的可用课程
+      // 重新加载该班级的可用课程（仅限对应学期的课程）
       if (this.addForm.classId) {
         console.log('重新加载班级课程，班级ID:', this.addForm.classId)
         this.loadAvailableCourses(this.addForm.classId)
@@ -1000,7 +1031,7 @@ export default {
         this.$refs.quickAddFormRef.clearValidate('courseId')
       }
       
-      // 重新加载该班级的可用课程
+      // 重新加载该班级的可用课程（仅限对应学期的课程）
       if (this.quickAddForm.classId) {
         console.log('重新加载班级课程，班级ID:', this.quickAddForm.classId)
         this.loadAvailableCourses(this.quickAddForm.classId)

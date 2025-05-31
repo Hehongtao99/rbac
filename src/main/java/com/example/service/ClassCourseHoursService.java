@@ -38,9 +38,10 @@ public interface ClassCourseHoursService {
      * @param teacherId 教师ID
      * @param classId 班级ID
      * @param academicYear 学年
+     * @param semester 学期
      * @return 可用课程列表
      */
-    List<Map<String, Object>> getAvailableCoursesForClass(Long teacherId, Long classId, String academicYear);
+    List<Map<String, Object>> getAvailableCoursesForClass(Long teacherId, Long classId, String academicYear, String semester);
     
     /**
      * 检查班级课程课时是否足够

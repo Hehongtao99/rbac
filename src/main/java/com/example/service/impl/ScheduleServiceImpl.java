@@ -361,7 +361,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     @Override
-    public List<Map<String, Object>> getAvailableCourses(String academicYear) {
+    public List<Map<String, Object>> getAvailableCourses(String academicYear, String semester) {
         // 获取当前登录用户信息
         User currentUser = userContextUtil.getCurrentUser();
         if (currentUser == null) {
@@ -370,11 +370,12 @@ public class ScheduleServiceImpl implements ScheduleService {
         
         Long teacherId = currentUser.getId();
         
-        // 查询该教师已通过审核的申请
+        // 查询该教师已通过审核的申请（指定学年和学期）
         CourseApplication queryApplication = new CourseApplication();
         queryApplication.setTeacherId(teacherId);
         queryApplication.setStatus(1); // 已通过
         queryApplication.setAcademicYear(academicYear);
+        queryApplication.setSemester(semester);
         
         List<CourseApplication> applications = courseApplicationMapper.selectList(queryApplication);
         
@@ -396,7 +397,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     /**
      * 获取教师在指定班级的可用课程列表（显示该班级的剩余课时）
      */
-    public List<Map<String, Object>> getAvailableCoursesForClass(Long classId, String academicYear) {
+    public List<Map<String, Object>> getAvailableCoursesForClass(Long classId, String academicYear, String semester) {
         // 获取当前登录用户信息
         User currentUser = userContextUtil.getCurrentUser();
         if (currentUser == null) {
@@ -405,8 +406,8 @@ public class ScheduleServiceImpl implements ScheduleService {
         
         Long teacherId = currentUser.getId();
         
-        // 获取该教师该班级的课程课时信息
-        return classCourseHoursService.getAvailableCoursesForClass(teacherId, classId, academicYear);
+        // 获取该教师该班级的课程课时信息（指定学年和学期）
+        return classCourseHoursService.getAvailableCoursesForClass(teacherId, classId, academicYear, semester);
     }
 
     @Override
@@ -498,5 +499,12 @@ public class ScheduleServiceImpl implements ScheduleService {
         }
         
         return vo;
+    }
+    
+    @Override
+    public List<ScheduleVO> getStudentSchedule(Long studentId) {
+        // 根据学生选课记录获取课程表
+        List<Schedule> schedules = scheduleMapper.selectStudentSchedule(studentId);
+        return schedules.stream().map(this::convertToVO).collect(Collectors.toList());
     }
 } 

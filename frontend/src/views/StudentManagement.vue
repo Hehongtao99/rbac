@@ -31,6 +31,8 @@
     >
       <el-table-column prop="studentNo" label="学号" width="120" />
       <el-table-column prop="name" label="姓名" width="120" />
+      <el-table-column prop="gender" label="性别" width="80" />
+      <el-table-column prop="collegeName" label="学院" width="130" />
       <el-table-column prop="major" label="专业" width="130" />
       <el-table-column prop="className" label="班级" width="120" />
       <el-table-column prop="phone" label="手机号码" width="130" />
@@ -43,9 +45,9 @@
         </template>
       </el-table-column>
       <el-table-column prop="currentAcademicYear" label="当前学年学期" width="200" />
-      <el-table-column prop="graduationDate" label="预计毕业时间" width="180">
+      <el-table-column label="预计毕业时间" width="120">
         <template #default="scope">
-          {{ formatDate(scope.row.graduationDate) }}
+          {{ calculateGraduationYear(scope.row) }}
         </template>
       </el-table-column>
       <el-table-column prop="status" label="状态" width="80">
@@ -91,6 +93,7 @@
         <el-descriptions-item label="学号">{{ userDetail.studentNo }}</el-descriptions-item>
         <el-descriptions-item label="姓名">{{ userDetail.name }}</el-descriptions-item>
         <el-descriptions-item label="性别">{{ userDetail.gender }}</el-descriptions-item>
+        <el-descriptions-item label="学院">{{ userDetail.collegeName }}</el-descriptions-item>
         <el-descriptions-item label="专业">{{ userDetail.major }}</el-descriptions-item>
         <el-descriptions-item label="班级">{{ userDetail.className }}</el-descriptions-item>
         <el-descriptions-item label="邮箱">{{ userDetail.email }}</el-descriptions-item>
@@ -98,9 +101,8 @@
         <el-descriptions-item label="年级">{{ userDetail.grade || '未分配' }}</el-descriptions-item>
         <el-descriptions-item label="学制">{{ userDetail.educationSystem || '未分配' }}</el-descriptions-item>
         <el-descriptions-item label="当前学期">{{ formatCurrentSemester(userDetail) }}</el-descriptions-item>
-        <el-descriptions-item label="入学时间">{{ formatDate(userDetail.enrollmentDate) }}</el-descriptions-item>
-        <el-descriptions-item label="预计毕业时间">{{ formatDate(userDetail.graduationDate) }}</el-descriptions-item>
         <el-descriptions-item label="当前学年学期">{{ userDetail.currentAcademicYear || '未设置' }}</el-descriptions-item>
+        <el-descriptions-item label="预计毕业时间">{{ calculateGraduationYear(userDetail) }}</el-descriptions-item>
         <el-descriptions-item label="状态">
           <el-tag :type="userDetail.status === 1 ? 'success' : 'danger'">
             {{ userDetail.status === 1 ? '启用' : '禁用' }}
@@ -162,9 +164,6 @@
         <el-form-item label="学生姓名">
           <el-input v-model="semesterForm.studentName" disabled />
         </el-form-item>
-        <el-form-item label="入学时间">
-          <el-input :value="calculateEnrollmentDate()" disabled placeholder="根据年级自动计算" />
-        </el-form-item>
         <el-form-item label="当前年级">
           <el-select v-model="semesterForm.currentYear" placeholder="请选择当前年级" style="width: 100%">
             <el-option label="大一" :value="1" />
@@ -214,12 +213,13 @@ export default {
       gender: '',
       email: '',
       phone: '',
+      collegeName: '',
       major: '',
       className: '',
       grade: '',
       educationSystem: '',
-      enrollmentDate: '',
-      graduationDate: '',
+      currentYear: null,
+      currentSemester: null,
       currentAcademicYear: '',
       status: 1,
       createTime: ''
@@ -257,6 +257,7 @@ export default {
         if (response.code === 200) {
           studentList.value = response.data.records
           total.value = response.data.total
+          console.log('学生列表数据:', studentList.value)
         }
       } catch (error) {
         console.error('获取学生列表失败:', error)
@@ -338,14 +339,6 @@ export default {
       semesterDialogVisible.value = true
     }
     
-    // 计算入学时间
-    const calculateEnrollmentDate = () => {
-      if (semesterForm.studentGrade) {
-        return `${semesterForm.studentGrade}-09-01 08:00:00`
-      }
-      return '根据年级自动计算'
-    }
-    
     // 确认设置学期
     const confirmSetSemester = async () => {
       if (!semesterForm.currentYear || !semesterForm.currentSemester) {
@@ -376,16 +369,28 @@ export default {
       }
     }
     
-    // 格式化当前学期
+    // 格式化当前学期 - 显示为"大几几期"格式
     const formatCurrentSemester = (student) => {
+      // 如果没有设置学期信息，返回未设置
       if (!student.currentYear || !student.currentSemester) {
         return '未设置'
       }
       
-      const yearText = ['', '大一', '大二', '大三', '大四', '大五'][student.currentYear] || `大${student.currentYear}`
-      const semesterText = student.currentSemester === 1 ? '上学期' : '下学期'
-      
-      return `${yearText}${semesterText}`
+      try {
+        const currentYear = parseInt(student.currentYear)
+        const currentSemester = parseInt(student.currentSemester)
+        
+        // 转换年级
+        const yearNames = ['', '大一', '大二', '大三', '大四', '大五']
+        const yearName = yearNames[currentYear] || `大${currentYear}`
+        
+        // 转换学期
+        const semesterName = currentSemester === 1 ? '上期' : '下期'
+        
+        return `${yearName}${semesterName}`
+      } catch (error) {
+        return '格式错误'
+      }
     }
     
     // 格式化日期
@@ -393,6 +398,30 @@ export default {
       if (!dateTime) return ''
       const date = new Date(dateTime)
       return date.toLocaleString()
+    }
+    
+    // 计算预计毕业时间
+    const calculateGraduationYear = (student) => {
+      if (!student.grade) {
+        return '未设置'
+      }
+      
+      try {
+        const gradeYear = parseInt(student.grade)
+        let educationYears = 4 // 默认4年制
+        
+        // 根据学制确定学习年限
+        if (student.educationSystem === '3年') {
+          educationYears = 3
+        } else if (student.educationSystem === '5年') {
+          educationYears = 5
+        }
+        
+        const graduationYear = gradeYear + educationYears
+        return `${graduationYear}年`
+      } catch (error) {
+        return '格式错误'
+      }
     }
     
     onMounted(() => {
@@ -423,9 +452,9 @@ export default {
       confirmAssign,
       setSemester,
       confirmSetSemester,
-      calculateEnrollmentDate,
       formatCurrentSemester,
-      formatDate
+      formatDate,
+      calculateGraduationYear
     }
   }
 }

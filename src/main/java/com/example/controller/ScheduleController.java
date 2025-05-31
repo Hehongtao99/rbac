@@ -139,8 +139,10 @@ public class ScheduleController {
      * 获取可选择的课程列表
      */
     @GetMapping("/available-courses")
-    public Result<List<Map<String, Object>>> getAvailableCourses(@RequestParam String academicYear) {
-        List<Map<String, Object>> courses = scheduleService.getAvailableCourses(academicYear);
+    public Result<List<Map<String, Object>>> getAvailableCourses(
+            @RequestParam String academicYear,
+            @RequestParam String semester) {
+        List<Map<String, Object>> courses = scheduleService.getAvailableCourses(academicYear, semester);
         return Result.success(courses);
     }
 
@@ -150,8 +152,9 @@ public class ScheduleController {
     @GetMapping("/available-courses/class")
     public Result<List<Map<String, Object>>> getAvailableCoursesForClass(
             @RequestParam String academicYear,
+            @RequestParam String semester,
             @RequestParam Long classId) {
-        List<Map<String, Object>> courses = scheduleService.getAvailableCoursesForClass(classId, academicYear);
+        List<Map<String, Object>> courses = scheduleService.getAvailableCoursesForClass(classId, academicYear, semester);
         return Result.success(courses);
     }
 
@@ -171,5 +174,14 @@ public class ScheduleController {
     public Result<Void> initTimeSlotConfig() {
         timeSlotConfigService.initTimeSlotConfig();
         return Result.success();
+    }
+    
+    /**
+     * 获取学生课程表
+     */
+    @GetMapping("/student/{studentId}")
+    public Result<List<ScheduleVO>> getStudentSchedule(@PathVariable Long studentId) {
+        List<ScheduleVO> schedule = scheduleService.getStudentSchedule(studentId);
+        return Result.success(schedule);
     }
 } 

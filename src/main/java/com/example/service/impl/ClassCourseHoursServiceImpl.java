@@ -99,9 +99,12 @@ public class ClassCourseHoursServiceImpl implements ClassCourseHoursService {
     }
 
     @Override
-    public List<Map<String, Object>> getAvailableCoursesForClass(Long teacherId, Long classId, String academicYear) {
-        // 获取教师已通过的课程申请
-        List<CourseApplication> applications = courseApplicationMapper.selectByTeacherIdAndAcademicYearAndStatus(teacherId, academicYear, 1);
+    public List<Map<String, Object>> getAvailableCoursesForClass(Long teacherId, Long classId, String academicYear, String semester) {
+        // 获取教师已通过的课程申请（指定学年和学期）
+        List<CourseApplication> applications = courseApplicationMapper.selectByTeacherIdAndAcademicYearAndStatus(teacherId, academicYear, 1)
+                .stream()
+                .filter(app -> semester.equals(app.getSemester()))  // 根据学期过滤
+                .collect(Collectors.toList());
         
         return applications.stream().map(application -> {
             // 获取或创建该班级的课时记录

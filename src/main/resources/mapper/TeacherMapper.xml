@@ -5,6 +5,7 @@
     <!-- 结果映射 -->
     <resultMap id="BaseResultMap" type="com.example.entity.Teacher">
         <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
         <result column="teacher_no" property="teacherNo" jdbcType="VARCHAR"/>
         <result column="name" property="name" jdbcType="VARCHAR"/>
         <result column="gender" property="gender" jdbcType="VARCHAR"/>
@@ -20,13 +21,13 @@
 
     <!-- 基础字段 -->
     <sql id="Base_Column_List">
-        id, teacher_no, name, gender, phone, email, department, title, status, create_time, update_time, deleted
+        id, user_id, teacher_no, name, gender, phone, email, department, title, status, create_time, update_time, deleted
     </sql>
 
     <!-- 插入 -->
     <insert id="insert" parameterType="com.example.entity.Teacher" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO sys_teacher (teacher_no, name, gender, phone, email, department, title, status, create_time, update_time, deleted)
-        VALUES (#{teacherNo}, #{name}, #{gender}, #{phone}, #{email}, #{department}, #{title}, #{status}, #{createTime}, #{updateTime}, #{deleted})
+        INSERT INTO sys_teacher (user_id, teacher_no, name, gender, phone, email, department, title, status, create_time, update_time, deleted)
+        VALUES (#{userId}, #{teacherNo}, #{name}, #{gender}, #{phone}, #{email}, #{department}, #{title}, #{status}, #{createTime}, #{updateTime}, #{deleted})
     </insert>
 
     <!-- 根据ID删除 -->
@@ -38,6 +39,7 @@
     <update id="updateById" parameterType="com.example.entity.Teacher">
         UPDATE sys_teacher
         <set>
+            <if test="userId != null">user_id = #{userId},</if>
             <if test="teacherNo != null">teacher_no = #{teacherNo},</if>
             <if test="name != null">name = #{name},</if>
             <if test="gender != null">gender = #{gender},</if>
@@ -47,6 +49,7 @@
             <if test="title != null">title = #{title},</if>
             <if test="status != null">status = #{status},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="deleted != null">deleted = #{deleted},</if>
         </set>
         WHERE id = #{id}
     </update>
@@ -119,6 +122,20 @@
                 AND status = #{teacher.status}
             </if>
         </where>
+    </select>
+
+    <!-- 根据用户ID查询 -->
+    <select id="selectByUserId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_teacher
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 查询最大教师编号 -->
+    <select id="selectMaxTeacherNo" resultType="java.lang.String">
+        SELECT MAX(teacher_no)
+        FROM sys_teacher
+        WHERE deleted = 0
     </select>
 
 </mapper> 

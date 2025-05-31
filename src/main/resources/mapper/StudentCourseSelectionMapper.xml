@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.StudentCourseSelectionMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.example.entity.StudentCourseSelection">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="student_id" property="studentId" jdbcType="BIGINT"/>
+        <result column="student_no" property="studentNo" jdbcType="VARCHAR"/>
+        <result column="student_name" property="studentName" jdbcType="VARCHAR"/>
+        <result column="course_application_id" property="courseApplicationId" jdbcType="BIGINT"/>
+        <result column="course_name" property="courseName" jdbcType="VARCHAR"/>
+        <result column="teacher_id" property="teacherId" jdbcType="BIGINT"/>
+        <result column="teacher_name" property="teacherName" jdbcType="VARCHAR"/>
+        <result column="academic_year" property="academicYear" jdbcType="VARCHAR"/>
+        <result column="semester" property="semester" jdbcType="VARCHAR"/>
+        <result column="course_hours" property="courseHours" jdbcType="INTEGER"/>
+        <result column="selection_time" property="selectionTime" jdbcType="TIMESTAMP"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, student_id, student_no, student_name, course_application_id, course_name,
+        teacher_id, teacher_name, academic_year, semester, course_hours, selection_time,
+        status, create_time, update_time, deleted
+    </sql>
+
+    <!-- 插入选课记录 -->
+    <insert id="insert" parameterType="com.example.entity.StudentCourseSelection" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_student_course_selection (
+            student_id, student_no, student_name, course_application_id, course_name,
+            teacher_id, teacher_name, academic_year, semester, course_hours, selection_time,
+            status, create_time, update_time, deleted
+        ) VALUES (
+            #{studentId}, #{studentNo}, #{studentName}, #{courseApplicationId}, #{courseName},
+            #{teacherId}, #{teacherName}, #{academicYear}, #{semester}, #{courseHours}, #{selectionTime},
+            #{status}, #{createTime}, #{updateTime}, #{deleted}
+        )
+    </insert>
+
+    <!-- 根据ID删除选课记录 -->
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM sys_student_course_selection WHERE id = #{id}
+    </delete>
+
+    <!-- 根据ID更新选课记录 -->
+    <update id="updateById" parameterType="com.example.entity.StudentCourseSelection">
+        UPDATE sys_student_course_selection
+        <set>
+            <if test="studentId != null">student_id = #{studentId},</if>
+            <if test="studentNo != null">student_no = #{studentNo},</if>
+            <if test="studentName != null">student_name = #{studentName},</if>
+            <if test="courseApplicationId != null">course_application_id = #{courseApplicationId},</if>
+            <if test="courseName != null">course_name = #{courseName},</if>
+            <if test="teacherId != null">teacher_id = #{teacherId},</if>
+            <if test="teacherName != null">teacher_name = #{teacherName},</if>
+            <if test="academicYear != null">academic_year = #{academicYear},</if>
+            <if test="semester != null">semester = #{semester},</if>
+            <if test="courseHours != null">course_hours = #{courseHours},</if>
+            <if test="selectionTime != null">selection_time = #{selectionTime},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="deleted != null">deleted = #{deleted},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID查询选课记录 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_student_course_selection
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!-- 条件查询选课记录列表 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_student_course_selection
+        <where>
+            deleted = 0
+            <if test="studentCourseSelection.studentId != null">
+                AND student_id = #{studentCourseSelection.studentId}
+            </if>
+            <if test="studentCourseSelection.courseApplicationId != null">
+                AND course_application_id = #{studentCourseSelection.courseApplicationId}
+            </if>
+            <if test="studentCourseSelection.status != null">
+                AND status = #{studentCourseSelection.status}
+            </if>
+            <if test="studentCourseSelection.academicYear != null and studentCourseSelection.academicYear != ''">
+                AND academic_year = #{studentCourseSelection.academicYear}
+            </if>
+        </where>
+        ORDER BY selection_time DESC
+    </select>
+
+    <!-- 统计选课记录数量 -->
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_student_course_selection
+        <where>
+            deleted = 0
+            <if test="studentCourseSelection.studentId != null">
+                AND student_id = #{studentCourseSelection.studentId}
+            </if>
+            <if test="studentCourseSelection.courseApplicationId != null">
+                AND course_application_id = #{studentCourseSelection.courseApplicationId}
+            </if>
+            <if test="studentCourseSelection.status != null">
+                AND status = #{studentCourseSelection.status}
+            </if>
+            <if test="studentCourseSelection.academicYear != null and studentCourseSelection.academicYear != ''">
+                AND academic_year = #{studentCourseSelection.academicYear}
+            </if>
+        </where>
+    </select>
+
+    <!-- 获取学生可选课程列表 -->
+    <select id="getAvailableCourses" resultType="com.example.vo.AvailableCourseVO">
+        SELECT 
+            ca.id as courseApplicationId,
+            ca.course_name as courseName,
+            ca.teacher_name as teacherName,
+            ca.academic_year as academicYear,
+            ca.semester as semester,
+            ca.course_hours as courseHours,
+            ca.max_students as maxStudents,
+            COALESCE(selected_count.count, 0) as currentStudents,
+            CASE WHEN scs.id IS NOT NULL THEN 1 ELSE 0 END as isSelected,
+            ca.reason as reason
+        FROM sys_course_application ca
+        INNER JOIN sys_course_template ct ON ca.template_id = ct.id
+        INNER JOIN sys_student s ON s.id = #{studentId}
+        LEFT JOIN (
+            SELECT course_application_id, COUNT(*) as count
+            FROM sys_student_course_selection 
+            WHERE status = 1 AND deleted = 0
+            GROUP BY course_application_id
+        ) selected_count ON ca.id = selected_count.course_application_id
+        LEFT JOIN sys_student_course_selection scs ON ca.id = scs.course_application_id 
+            AND scs.student_id = #{studentId} AND scs.status = 1 AND scs.deleted = 0
+        WHERE ca.status = 1 
+            AND ca.deleted = 0
+            AND ct.deleted = 0
+            AND (ct.college_id IS NULL OR ct.college_id IN (
+                SELECT uo.organization_id 
+                FROM sys_user_organization uo 
+                INNER JOIN sys_organization o ON uo.organization_id = o.id
+                WHERE uo.user_id = (SELECT user_id FROM sys_user_role ur INNER JOIN sys_user u ON ur.user_id = u.id WHERE u.username = s.student_no)
+                    AND o.org_type = 'COLLEGE'
+            ))
+            AND (ct.major_id IS NULL OR ct.major_id IN (
+                SELECT uo.organization_id 
+                FROM sys_user_organization uo 
+                INNER JOIN sys_organization o ON uo.organization_id = o.id
+                WHERE uo.user_id = (SELECT user_id FROM sys_user_role ur INNER JOIN sys_user u ON ur.user_id = u.id WHERE u.username = s.student_no)
+                    AND o.org_type = 'MAJOR'
+            ))
+            AND ca.academic_year = s.current_academic_year
+        ORDER BY ca.course_name, ca.teacher_name
+    </select>
+
+    <!-- 获取学生已选课程列表 -->
+    <select id="getSelectedCourses" resultType="com.example.vo.StudentCourseSelectionVO">
+        SELECT 
+            scs.id,
+            scs.course_application_id as courseApplicationId,
+            scs.course_name as courseName,
+            scs.teacher_name as teacherName,
+            scs.academic_year as academicYear,
+            scs.semester as semester,
+            scs.course_hours as courseHours,
+            scs.selection_time as selectionTime,
+            scs.status
+        FROM sys_student_course_selection scs
+        WHERE scs.student_id = #{studentId}
+            AND scs.status = 1
+            AND scs.deleted = 0
+        ORDER BY scs.selection_time DESC
+    </select>
+
+    <!-- 检查学生是否已选择该课程 -->
+    <select id="checkCourseSelected" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM sys_student_course_selection
+        WHERE student_id = #{studentId}
+            AND course_application_id = #{courseApplicationId}
+            AND status = 1
+            AND deleted = 0
+    </select>
+
+    <!-- 检查课程是否已满员 -->
+    <select id="checkCourseFull" resultType="java.lang.Integer">
+        SELECT 
+            CASE WHEN COALESCE(selected_count.count, 0) >= ca.max_students THEN 1 ELSE 0 END
+        FROM sys_course_application ca
+        LEFT JOIN (
+            SELECT course_application_id, COUNT(*) as count
+            FROM sys_student_course_selection 
+            WHERE status = 1 AND deleted = 0
+            GROUP BY course_application_id
+        ) selected_count ON ca.id = selected_count.course_application_id
+        WHERE ca.id = #{courseApplicationId}
+    </select>
+
+    <!-- 检查同一科目是否已选择 -->
+    <select id="checkSameSubject" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_student_course_selection
+        WHERE student_id = #{studentId}
+            AND course_name = #{courseName}
+            AND status = 1
+            AND deleted = 0
+    </select>
+
+    <!-- 更新选课状态为退课 -->
+    <update id="updateStatusToDrop">
+        UPDATE sys_student_course_selection
+        SET status = 0, update_time = NOW()
+        WHERE student_id = #{studentId}
+            AND course_application_id = #{courseApplicationId}
+            AND status = 1
+            AND deleted = 0
+    </update>
+
+</mapper> 

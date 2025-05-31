@@ -611,82 +611,76 @@ export default {
         
         console.log('回显组织信息:', { orgIds, isTeacherUser: isTeacherUser.value, isStudentUser: isStudentUser.value })
         
-        // 获取第一个组织的详情用于确定学院和专业
-        const orgResponse = await request.get(`/admin/organizations/${orgIds[0]}`)
-        const org = orgResponse.data
-        
-        console.log('组织详情:', org)
-        
-        if (org.orgLevel === 3) { // 班级
-          // 根据用户角色设置班级ID
-          if (isTeacherUser.value) {
-            assignOrganizationForm.classIds = orgIds // 教师可能有多个班级
-          } else {
-            assignOrganizationForm.classIds = orgIds[0] // 学生只有一个班级
+        // 获取所有组织的详情
+        const orgDetails = []
+        for (const orgId of orgIds) {
+          try {
+            const orgResponse = await request.get(`/admin/organizations/${orgId}`)
+            orgDetails.push(orgResponse.data)
+          } catch (error) {
+            console.error(`获取组织ID ${orgId} 详情失败:`, error)
           }
-          assignOrganizationForm.majorId = org.parentId
-          
-          // 获取专业信息
-          const majorResponse = await request.get(`/admin/organizations/${org.parentId}`)
-          const major = majorResponse.data
-          assignOrganizationForm.collegeId = major.parentId
-          
-          // 加载对应的专业和班级列表
-          await fetchMajorsByCollege(major.parentId)
-          await fetchClassesByMajor(org.parentId)
-          
-          // 等待DOM更新后再设置值
-          await nextTick()
-          
-          console.log('回显完成 - 班级级别:', {
-            collegeId: assignOrganizationForm.collegeId,
-            majorId: assignOrganizationForm.majorId,
-            classIds: assignOrganizationForm.classIds
-          })
-          
-        } else if (org.orgLevel === 2) { // 专业
-          assignOrganizationForm.majorId = org.id
-          assignOrganizationForm.collegeId = org.parentId
-          if (isTeacherUser.value) {
-            assignOrganizationForm.classIds = [] // 教师用数组
-          } else {
-            assignOrganizationForm.classIds = null // 其他角色用null
-          }
-          
-          // 加载对应的专业和班级列表
-          await fetchMajorsByCollege(org.parentId)
-          await fetchClassesByMajor(org.id)
-          
-          // 等待DOM更新后再设置值
-          await nextTick()
-          
-          console.log('回显完成 - 专业级别:', {
-            collegeId: assignOrganizationForm.collegeId,
-            majorId: assignOrganizationForm.majorId,
-            classIds: assignOrganizationForm.classIds
-          })
-          
-        } else if (org.orgLevel === 1) { // 学院
-          assignOrganizationForm.collegeId = org.id
-          assignOrganizationForm.majorId = null
-          if (isTeacherUser.value) {
-            assignOrganizationForm.classIds = [] // 教师用数组
-          } else {
-            assignOrganizationForm.classIds = null // 其他角色用null
-          }
-          
-          // 加载对应的专业列表
-          await fetchMajorsByCollege(org.id)
-          
-          // 等待DOM更新后再设置值
-          await nextTick()
-          
-          console.log('回显完成 - 学院级别:', {
-            collegeId: assignOrganizationForm.collegeId,
-            majorId: assignOrganizationForm.majorId,
-            classIds: assignOrganizationForm.classIds
-          })
         }
+        
+        console.log('所有组织详情:', orgDetails)
+        
+        // 按级别分类组织
+        const collegeOrgs = orgDetails.filter(org => org.orgLevel === 1)
+        const majorOrgs = orgDetails.filter(org => org.orgLevel === 2)
+        const classOrgs = orgDetails.filter(org => org.orgLevel === 3)
+        
+        // 设置学院
+        if (collegeOrgs.length > 0) {
+          assignOrganizationForm.collegeId = collegeOrgs[0].id
+          await fetchMajorsByCollege(collegeOrgs[0].id)
+        }
+        
+        // 设置专业
+        if (majorOrgs.length > 0) {
+          assignOrganizationForm.majorId = majorOrgs[0].id
+          await fetchClassesByMajor(majorOrgs[0].id)
+        } else if (classOrgs.length > 0) {
+          // 如果没有直接的专业关联，但有班级，从班级获取专业信息
+          const classOrg = classOrgs[0]
+          assignOrganizationForm.majorId = classOrg.parentId
+          
+          // 获取专业信息设置学院
+          if (!assignOrganizationForm.collegeId) {
+            const majorResponse = await request.get(`/admin/organizations/${classOrg.parentId}`)
+            const major = majorResponse.data
+            assignOrganizationForm.collegeId = major.parentId
+            await fetchMajorsByCollege(major.parentId)
+          }
+          await fetchClassesByMajor(classOrg.parentId)
+        }
+        
+        // 设置班级
+        if (classOrgs.length > 0) {
+          if (isTeacherUser.value) {
+            // 教师可能有多个班级
+            assignOrganizationForm.classIds = classOrgs.map(org => org.id)
+          } else {
+            // 学生只有一个班级
+            assignOrganizationForm.classIds = classOrgs[0].id
+          }
+        } else {
+          // 没有班级分配
+          if (isTeacherUser.value) {
+            assignOrganizationForm.classIds = []
+          } else {
+            assignOrganizationForm.classIds = null
+          }
+        }
+        
+        // 等待DOM更新后再设置值
+        await nextTick()
+        
+        console.log('回显完成:', {
+          collegeId: assignOrganizationForm.collegeId,
+          majorId: assignOrganizationForm.majorId,
+          classIds: assignOrganizationForm.classIds
+        })
+        
       } catch (error) {
         console.error('回显组织信息失败:', error)
       }
@@ -701,7 +695,8 @@ export default {
           return
         }
         
-        if (isStudentUser.value && (!assignOrganizationForm.classIds || assignOrganizationForm.classIds.length === 0)) {
+        // 修复学生班级验证逻辑
+        if (isStudentUser.value && !assignOrganizationForm.classIds) {
           ElMessage.warning('学生必须选择班级')
           return
         }
@@ -728,6 +723,7 @@ export default {
           }
         }
 
+        console.log('发送分配组织请求:', requestData)
         await request.post('/admin/assign-organization', requestData)
         
         ElMessage.success('分配组织成功')

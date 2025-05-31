@@ -5,6 +5,7 @@
     <!-- 结果映射 -->
     <resultMap id="BaseResultMap" type="com.example.entity.Student">
         <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
         <result column="student_no" property="studentNo" jdbcType="VARCHAR"/>
         <result column="name" property="name" jdbcType="VARCHAR"/>
         <result column="gender" property="gender" jdbcType="VARCHAR"/>
@@ -27,17 +28,17 @@
 
     <!-- 基础字段 -->
     <sql id="Base_Column_List">
-        id, student_no, name, gender, phone, email, major, class_name, grade, education_system, 
+        id, user_id, student_no, name, gender, phone, email, major, class_name, grade, education_system, 
         enrollment_date, graduation_date, current_year, current_semester, current_academic_year, 
         status, create_time, update_time, deleted
     </sql>
 
     <!-- 插入 -->
     <insert id="insert" parameterType="com.example.entity.Student" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO sys_student (student_no, name, gender, phone, email, major, class_name, grade, education_system, 
+        INSERT INTO sys_student (user_id, student_no, name, gender, phone, email, major, class_name, grade, education_system, 
                                  enrollment_date, graduation_date, current_year, current_semester, current_academic_year, 
                                  status, create_time, update_time, deleted)
-        VALUES (#{studentNo}, #{name}, #{gender}, #{phone}, #{email}, #{major}, #{className}, #{grade}, #{educationSystem}, 
+        VALUES (#{userId}, #{studentNo}, #{name}, #{gender}, #{phone}, #{email}, #{major}, #{className}, #{grade}, #{educationSystem}, 
                 #{enrollmentDate}, #{graduationDate}, #{currentYear}, #{currentSemester}, #{currentAcademicYear}, 
                 #{status}, #{createTime}, #{updateTime}, #{deleted})
     </insert>
@@ -51,6 +52,7 @@
     <update id="updateById" parameterType="com.example.entity.Student">
         UPDATE sys_student
         <set>
+            <if test="userId != null">user_id = #{userId},</if>
             <if test="studentNo != null">student_no = #{studentNo},</if>
             <if test="name != null">name = #{name},</if>
             <if test="gender != null">gender = #{gender},</if>
@@ -67,6 +69,7 @@
             <if test="currentAcademicYear != null">current_academic_year = #{currentAcademicYear},</if>
             <if test="status != null">status = #{status},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="deleted != null">deleted = #{deleted},</if>
         </set>
         WHERE id = #{id}
     </update>
@@ -139,6 +142,20 @@
                 AND status = #{student.status}
             </if>
         </where>
+    </select>
+
+    <!-- 根据用户ID查询 -->
+    <select id="selectByUserId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_student
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 查询指定年份的最大学号 -->
+    <select id="selectMaxStudentNoByYear" parameterType="java.lang.String" resultType="java.lang.String">
+        SELECT MAX(student_no)
+        FROM sys_student
+        WHERE student_no LIKE CONCAT('S', #{year}, '%') AND deleted = 0
     </select>
 
 </mapper> 

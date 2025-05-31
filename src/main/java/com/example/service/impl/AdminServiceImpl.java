@@ -47,6 +47,12 @@ public class AdminServiceImpl implements AdminService {
     @Autowired
     private PasswordUtil passwordUtil;
     
+    @Autowired
+    private StudentMapper studentMapper;
+    
+    @Autowired
+    private TeacherMapper teacherMapper;
+    
     @Override
     public Result<List<UserWithRoleVO>> getAllUsers() {
         try {
@@ -223,6 +229,36 @@ public class AdminServiceImpl implements AdminService {
                 return Result.error("用户已拥有该角色");
             }
             
+            // 在角色切换前，先删除原有角色对应的学生或教师记录
+            for (UserRole existUserRole : existUserRoles) {
+                Role existRole = roleMapper.selectById(existUserRole.getRoleId());
+                if (existRole != null) {
+                    String existRoleCode = existRole.getRoleCode();
+                    String existRoleName = existRole.getRoleName();
+                    
+                    // 如果原来是学生角色，删除学生记录
+                    if ("STUDENT".equals(existRoleCode) || "学生".equals(existRoleName)) {
+                        Student existStudent = studentMapper.selectByUserId(userId);
+                        if (existStudent != null && existStudent.getDeleted() == 0) {
+                            // 软删除学生记录
+                            existStudent.setDeleted(1);
+                            existStudent.setUpdateTime(LocalDateTime.now());
+                            studentMapper.updateById(existStudent);
+                        }
+                    }
+                    // 如果原来是教师角色，删除教师记录
+                    else if ("TEACHER".equals(existRoleCode) || "教师".equals(existRoleName)) {
+                        Teacher existTeacher = teacherMapper.selectByUserId(userId);
+                        if (existTeacher != null && existTeacher.getDeleted() == 0) {
+                            // 软删除教师记录
+                            existTeacher.setDeleted(1);
+                            existTeacher.setUpdateTime(LocalDateTime.now());
+                            teacherMapper.updateById(existTeacher);
+                        }
+                    }
+                }
+            }
+            
             // 先删除用户的所有旧角色（软删除）
             if (!existUserRoles.isEmpty()) {
                 for (UserRole existUserRole : existUserRoles) {
@@ -239,10 +275,119 @@ public class AdminServiceImpl implements AdminService {
             userRole.setDeleted(0);
             userRoleMapper.insert(userRole);
             
+            // 根据新角色类型自动创建对应的学生或教师记录
+            String roleCode = role.getRoleCode();
+            String roleName = role.getRoleName();
+            
+            if ("STUDENT".equals(roleCode) || "学生".equals(roleName)) {
+                // 分配学生角色，检查是否已存在学生记录
+                Student existStudent = studentMapper.selectByUserId(userId);
+                if (existStudent == null) {
+                    // 创建新的学生记录
+                    Student student = new Student();
+                    student.setUserId(userId);
+                    student.setStudentNo(generateStudentNo()); // 生成学号
+                    student.setName(user.getNickname()); // 使用用户昵称作为姓名
+                    student.setPhone(user.getPhone());
+                    student.setEmail(user.getEmail());
+                    student.setStatus(1);
+                    student.setCreateTime(LocalDateTime.now());
+                    student.setUpdateTime(LocalDateTime.now());
+                    student.setDeleted(0);
+                    
+                    studentMapper.insert(student);
+                } else {
+                    // 如果记录已存在（无论是否删除），重新激活并更新信息
+                    existStudent.setDeleted(0);
+                    existStudent.setStatus(1);
+                    existStudent.setName(user.getNickname()); // 更新姓名
+                    existStudent.setPhone(user.getPhone()); // 更新手机号
+                    existStudent.setEmail(user.getEmail()); // 更新邮箱
+                    existStudent.setUpdateTime(LocalDateTime.now());
+                    
+                    studentMapper.updateById(existStudent);
+                }
+            } else if ("TEACHER".equals(roleCode) || "教师".equals(roleName)) {
+                // 分配教师角色，检查是否已存在教师记录
+                Teacher existTeacher = teacherMapper.selectByUserId(userId);
+                if (existTeacher == null) {
+                    // 创建新的教师记录
+                    Teacher teacher = new Teacher();
+                    teacher.setUserId(userId);
+                    teacher.setTeacherNo(generateTeacherNo()); // 生成教师编号
+                    teacher.setName(user.getNickname()); // 使用用户昵称作为姓名
+                    teacher.setPhone(user.getPhone());
+                    teacher.setEmail(user.getEmail());
+                    teacher.setStatus(1);
+                    teacher.setCreateTime(LocalDateTime.now());
+                    teacher.setUpdateTime(LocalDateTime.now());
+                    teacher.setDeleted(0);
+                    
+                    teacherMapper.insert(teacher);
+                } else {
+                    // 如果记录已存在（无论是否删除），重新激活并更新信息
+                    existTeacher.setDeleted(0);
+                    existTeacher.setStatus(1);
+                    existTeacher.setName(user.getNickname()); // 更新姓名
+                    existTeacher.setPhone(user.getPhone()); // 更新手机号
+                    existTeacher.setEmail(user.getEmail()); // 更新邮箱
+                    existTeacher.setUpdateTime(LocalDateTime.now());
+                    
+                    teacherMapper.updateById(existTeacher);
+                }
+            }
+            
             return Result.success();
         } catch (Exception e) {
             return Result.error(e.getMessage());
         }
+    }
+    
+    /**
+     * 生成学号
+     */
+    private String generateStudentNo() {
+        // 获取当前年份
+        int currentYear = LocalDateTime.now().getYear();
+        
+        // 查询当年最大的学号
+        String maxStudentNo = studentMapper.selectMaxStudentNoByYear(String.valueOf(currentYear));
+        
+        int nextNumber = 1;
+        if (maxStudentNo != null && maxStudentNo.length() >= 7) {
+            // 提取序号部分（后3位）
+            String numberPart = maxStudentNo.substring(4);
+            try {
+                nextNumber = Integer.parseInt(numberPart) + 1;
+            } catch (NumberFormatException e) {
+                nextNumber = 1;
+            }
+        }
+        
+        // 格式：S + 年份 + 3位序号，如 S2024001
+        return String.format("S%d%03d", currentYear, nextNumber);
+    }
+    
+    /**
+     * 生成教师编号
+     */
+    private String generateTeacherNo() {
+        // 查询最大的教师编号
+        String maxTeacherNo = teacherMapper.selectMaxTeacherNo();
+        
+        int nextNumber = 1;
+        if (maxTeacherNo != null && maxTeacherNo.length() >= 4) {
+            // 提取序号部分（T后面的数字）
+            String numberPart = maxTeacherNo.substring(1);
+            try {
+                nextNumber = Integer.parseInt(numberPart) + 1;
+            } catch (NumberFormatException e) {
+                nextNumber = 1;
+            }
+        }
+        
+        // 格式：T + 3位序号，如 T001
+        return String.format("T%03d", nextNumber);
     }
     
     @Override
@@ -589,6 +734,7 @@ public class AdminServiceImpl implements AdminService {
     }
     
     @Override
+    @Transactional
     public Result<Void> assignOrganization(AssignOrganizationRequest request) {
         try {
             Long userId = request.getUserId();
@@ -604,10 +750,15 @@ public class AdminServiceImpl implements AdminService {
             
             LocalDateTime now = LocalDateTime.now();
             
+            // 存储组织信息，用于后续更新学生或教师表
+            Organization college = null;
+            Organization major = null;
+            Organization classOrg = null;
+            
             // 添加新的用户组织关联
             if (request.getCollegeId() != null) {
                 // 检查学院是否存在
-                Organization college = organizationMapper.selectById(request.getCollegeId());
+                college = organizationMapper.selectById(request.getCollegeId());
                 if (college == null) {
                     return Result.error("学院不存在");
                 }
@@ -622,7 +773,7 @@ public class AdminServiceImpl implements AdminService {
             
             if (request.getMajorId() != null) {
                 // 检查专业是否存在
-                Organization major = organizationMapper.selectById(request.getMajorId());
+                major = organizationMapper.selectById(request.getMajorId());
                 if (major == null) {
                     return Result.error("专业不存在");
                 }
@@ -638,9 +789,14 @@ public class AdminServiceImpl implements AdminService {
             if (request.getClassIds() != null && !request.getClassIds().isEmpty()) {
                 for (Long classId : request.getClassIds()) {
                     // 检查班级是否存在
-                    Organization classOrg = organizationMapper.selectById(classId);
-                    if (classOrg == null) {
+                    Organization classOrgTemp = organizationMapper.selectById(classId);
+                    if (classOrgTemp == null) {
                         return Result.error("班级ID " + classId + " 不存在");
+                    }
+                    
+                    // 对于学生，只取第一个班级
+                    if (classOrg == null) {
+                        classOrg = classOrgTemp;
                     }
                     
                     UserOrganization userOrg = new UserOrganization();
@@ -652,9 +808,84 @@ public class AdminServiceImpl implements AdminService {
                 }
             }
             
+            // 获取用户角色，判断是学生还是教师
+            List<UserRole> userRoles = userRoleMapper.selectByUserId(userId);
+            boolean isStudent = false;
+            boolean isTeacher = false;
+            
+            for (UserRole userRole : userRoles) {
+                Role role = roleMapper.selectById(userRole.getRoleId());
+                if (role != null) {
+                    if ("学生".equals(role.getRoleName())) {
+                        isStudent = true;
+                    } else if ("教师".equals(role.getRoleName())) {
+                        isTeacher = true;
+                    }
+                }
+            }
+            
+            // 如果是学生，更新学生表中的组织信息
+            if (isStudent) {
+                updateStudentOrganizationInfo(userId, major, classOrg, now);
+            }
+            
+            // 如果是教师，更新教师表中的组织信息
+            if (isTeacher) {
+                updateTeacherOrganizationInfo(userId, college, major, now);
+            }
+            
             return Result.success();
         } catch (Exception e) {
             return Result.error(e.getMessage());
+        }
+    }
+    
+    /**
+     * 更新学生表中的组织信息
+     */
+    private void updateStudentOrganizationInfo(Long userId, Organization major, Organization classOrg, LocalDateTime updateTime) {
+        try {
+            // 查找对应的学生记录
+            Student student = studentMapper.selectByUserId(userId);
+            if (student != null) {
+                // 更新专业和班级信息
+                if (major != null) {
+                    student.setMajor(major.getOrgName());
+                }
+                if (classOrg != null) {
+                    student.setClassName(classOrg.getOrgName());
+                }
+                student.setUpdateTime(updateTime);
+                
+                studentMapper.updateById(student);
+            }
+        } catch (Exception e) {
+            // 记录错误但不影响主流程
+            System.err.println("更新学生组织信息失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 更新教师表中的组织信息
+     */
+    private void updateTeacherOrganizationInfo(Long userId, Organization college, Organization major, LocalDateTime updateTime) {
+        try {
+            // 查找对应的教师记录
+            Teacher teacher = teacherMapper.selectByUserId(userId);
+            if (teacher != null) {
+                // 更新部门信息（可以是学院或专业）
+                if (major != null) {
+                    teacher.setDepartment(major.getOrgName());
+                } else if (college != null) {
+                    teacher.setDepartment(college.getOrgName());
+                }
+                teacher.setUpdateTime(updateTime);
+                
+                teacherMapper.updateById(teacher);
+            }
+        } catch (Exception e) {
+            // 记录错误但不影响主流程
+            System.err.println("更新教师组织信息失败: " + e.getMessage());
         }
     }
     

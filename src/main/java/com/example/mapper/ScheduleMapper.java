@@ -66,6 +66,9 @@ public interface ScheduleMapper {
                                                                                @Param("teacherName") String teacherName,
                                                                                @Param("courseName") String courseName);
     
+    // 根据学生ID查询学生课程表
+    List<Schedule> selectStudentSchedule(@Param("studentId") Long studentId);
+    
     // 统计总数
     long selectCount(@Param("schedule") Schedule schedule);
 } 

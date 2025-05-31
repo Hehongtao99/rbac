@@ -47,12 +47,12 @@ public interface ScheduleService {
     /**
      * 获取可选择的课程列表（教师申请通过的课程）
      */
-    List<Map<String, Object>> getAvailableCourses(String academicYear);
+    List<Map<String, Object>> getAvailableCourses(String academicYear, String semester);
     
     /**
      * 获取指定班级的可用课程列表（显示该班级的剩余课时）
      */
-    List<Map<String, Object>> getAvailableCoursesForClass(Long classId, String academicYear);
+    List<Map<String, Object>> getAvailableCoursesForClass(Long classId, String academicYear, String semester);
     
     /**
      * 获取教师分配的班级列表
@@ -68,4 +68,9 @@ public interface ScheduleService {
      * 管理员获取周课程表（网格形式）
      */
     Map<String, Object> getWeeklyScheduleForAdmin(String academicYear, Integer weekNumber, Long teacherId);
+    
+    /**
+     * 获取学生课程表
+     */
+    List<ScheduleVO> getStudentSchedule(Long studentId);
 } 

@@ -13,25 +13,36 @@ public class TeacherVO {
     
     private Long id;
     
-    private String teacherName;
+    private Long userId;
     
-    private String teacherCode;
+    private String teacherNo;
+    
+    private String name;
+    
+    private String gender;
     
     private String email;
     
     private String phone;
     
-    private String department;
+    private String college; // 学院
     
-    private String title; // 职称
+    private String major; // 专业
+    
+    private List<ClassInfo> classes; // 班级列表
     
     private Integer status;
     
     private String statusName;
     
-    private List<String> organizationNames; // 所属组织名称列表
-    
     private LocalDateTime createTime;
     
     private LocalDateTime updateTime;
+    
+    @Data
+    public static class ClassInfo {
+        private Long id;
+        private String name;
+        private String code;
+    }
 } 

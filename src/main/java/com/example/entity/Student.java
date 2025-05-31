@@ -7,6 +7,8 @@ import java.time.LocalDateTime;
 public class Student {
     private Long id;
     
+    private Long userId;
+    
     private String studentNo;
     
     private String name;

@@ -5,7 +5,7 @@
       <div class="header-actions">
         <el-input
           v-model="searchKeyword"
-          placeholder="请输入用户名、姓名、邮箱或手机号"
+          placeholder="请输入教师编号、姓名、邮箱或手机号"
           style="width: 300px; margin-right: 15px"
           clearable
           @keyup.enter="searchTeachers"
@@ -29,10 +29,18 @@
       v-loading="loading"
       style="width: 100%"
     >
-      <el-table-column prop="username" label="用户名" width="120" />
-      <el-table-column prop="nickname" label="姓名" width="120" />
+      <el-table-column prop="teacherNo" label="教师编号" width="120" />
+      <el-table-column prop="name" label="姓名" width="120" />
+      <el-table-column prop="gender" label="性别" width="80" />
       <el-table-column prop="phone" label="手机号码" width="130" />
       <el-table-column prop="email" label="邮箱" width="200" />
+      <el-table-column prop="college" label="学院" width="130" />
+      <el-table-column prop="major" label="专业" width="130" />
+      <el-table-column label="班级" width="200">
+        <template #default="scope">
+          {{ formatClasses(scope.row.classes) }}
+        </template>
+      </el-table-column>
       <el-table-column prop="status" label="状态" width="80">
         <template #default="scope">
           <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
@@ -64,17 +72,21 @@
       style="margin-top: 20px; text-align: right"
     />
 
-    <!-- 用户详情对话框 -->
+    <!-- 教师详情对话框 -->
     <el-dialog
-      title="用户详情"
+      title="教师详情"
       v-model="dialogVisible"
       width="500px"
     >
       <el-descriptions :column="1" border>
-        <el-descriptions-item label="用户名">{{ userDetail.username }}</el-descriptions-item>
-        <el-descriptions-item label="昵称">{{ userDetail.nickname }}</el-descriptions-item>
+        <el-descriptions-item label="教师编号">{{ userDetail.teacherNo }}</el-descriptions-item>
+        <el-descriptions-item label="姓名">{{ userDetail.name }}</el-descriptions-item>
+        <el-descriptions-item label="性别">{{ userDetail.gender }}</el-descriptions-item>
         <el-descriptions-item label="邮箱">{{ userDetail.email }}</el-descriptions-item>
         <el-descriptions-item label="手机号">{{ userDetail.phone }}</el-descriptions-item>
+        <el-descriptions-item label="学院">{{ userDetail.college }}</el-descriptions-item>
+        <el-descriptions-item label="专业">{{ userDetail.major }}</el-descriptions-item>
+        <el-descriptions-item label="班级">{{ formatClasses(userDetail.classes) }}</el-descriptions-item>
         <el-descriptions-item label="状态">
           <el-tag :type="userDetail.status === 1 ? 'success' : 'danger'">
             {{ userDetail.status === 1 ? '启用' : '禁用' }}
@@ -109,10 +121,14 @@ export default {
     
     const dialogVisible = ref(false)
     const userDetail = reactive({
-      username: '',
-      nickname: '',
+      teacherNo: '',
+      name: '',
+      gender: '',
       email: '',
       phone: '',
+      college: '',
+      major: '',
+      classes: [],
       status: 1,
       createTime: ''
     })
@@ -130,6 +146,7 @@ export default {
         if (response.code === 200) {
           teacherList.value = response.data.records
           total.value = response.data.total
+          console.log('教师列表数据:', teacherList.value)
         }
       } catch (error) {
         console.error('获取教师列表失败:', error)
@@ -156,9 +173,9 @@ export default {
       fetchTeacherList()
     }
     
-    // 查看用户详情
-    const viewUser = (user) => {
-      Object.assign(userDetail, user)
+    // 查看教师详情
+    const viewUser = (teacher) => {
+      Object.assign(userDetail, teacher)
       dialogVisible.value = true
     }
     
@@ -167,6 +184,14 @@ export default {
       if (!dateTime) return ''
       const date = new Date(dateTime)
       return date.toLocaleString()
+    }
+    
+    // 格式化班级
+    const formatClasses = (classes) => {
+      if (!classes || !Array.isArray(classes) || classes.length === 0) {
+        return '未分配'
+      }
+      return classes.map(c => c.name).join(', ')
     }
     
     onMounted(() => {
@@ -187,7 +212,8 @@ export default {
       handleSizeChange,
       handleCurrentChange,
       viewUser,
-      formatDate
+      formatDate,
+      formatClasses
     }
   }
 }

@@ -56,16 +56,16 @@ export default {
   },
 
   // 获取可选择的课程列表 - 后端从JWT获取teacherId
-  getAvailableCourses(academicYear) {
+  getAvailableCourses(academicYear, semester) {
     return request.get(`${API_BASE_URL}/available-courses`, {
-      params: { academicYear }
+      params: { academicYear, semester }
     })
   },
 
   // 获取指定班级的可用课程列表（显示该班级的剩余课时）- 后端从JWT获取teacherId
-  getAvailableCoursesForClass(academicYear, classId) {
+  getAvailableCoursesForClass(academicYear, semester, classId) {
     return request.get(`${API_BASE_URL}/available-courses/class`, {
-      params: { academicYear, classId }
+      params: { academicYear, semester, classId }
     })
   },
 
@@ -88,4 +88,28 @@ export default {
   getWeeklyScheduleForAdmin(params) {
     return request.get(`${API_BASE_URL}/admin/weekly`, { params })
   }
+}
+
+// 获取学生课程表
+export function getStudentSchedule(studentId) {
+  return request({
+    url: `/schedule/student/${studentId}`,
+    method: 'get'
+  })
+}
+
+// 获取教师课程表
+export function getTeacherSchedule(teacherId) {
+  return request({
+    url: `/schedule/teacher/${teacherId}`,
+    method: 'get'
+  })
+}
+
+// 获取所有课程表
+export function getAllSchedules() {
+  return request({
+    url: '/schedule/all',
+    method: 'get'
+  })
 } 

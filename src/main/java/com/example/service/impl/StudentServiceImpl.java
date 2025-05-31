@@ -4,12 +4,16 @@ import com.example.entity.Student;
 import com.example.entity.User;
 import com.example.entity.Role;
 import com.example.entity.UserRole;
+import com.example.entity.UserOrganization;
+import com.example.entity.Organization;
 import com.example.dto.StudentDTO;
 import com.example.dto.StudentPageDTO;
 import com.example.mapper.StudentMapper;
 import com.example.mapper.UserMapper;
 import com.example.mapper.RoleMapper;
 import com.example.mapper.UserRoleMapper;
+import com.example.mapper.UserOrganizationMapper;
+import com.example.mapper.OrganizationMapper;
 import com.example.service.StudentService;
 import com.example.common.Result;
 import com.example.common.PageResult;
@@ -41,6 +45,12 @@ public class StudentServiceImpl implements StudentService {
     
     @Autowired
     private UserRoleMapper userRoleMapper;
+    
+    @Autowired
+    private UserOrganizationMapper userOrganizationMapper;
+    
+    @Autowired
+    private OrganizationMapper organizationMapper;
 
     // 状态映射
     private static final Map<Integer, String> STATUS_MAP = new HashMap<>();
@@ -151,6 +161,71 @@ public class StudentServiceImpl implements StudentService {
         // 设置状态名称
         vo.setStatusName(STATUS_MAP.get(student.getStatus()));
         
+        // 生成当前学年学期格式：xxxx-xxxx年第x学期
+        if (student.getGrade() != null && student.getCurrentSemester() != null && student.getCurrentYear() != null) {
+            String currentAcademicYear = generateAcademicYearSemester(student.getGrade(), student.getCurrentYear(), student.getCurrentSemester());
+            vo.setCurrentAcademicYear(currentAcademicYear);
+        } else {
+            vo.setCurrentAcademicYear("未设置");
+        }
+        
+        // 获取学生的组织信息
+        if (student.getUserId() != null) {
+            setStudentOrganizationInfo(vo, student.getUserId());
+        }
+        
         return vo;
+    }
+    
+    /**
+     * 设置学生的组织信息
+     */
+    private void setStudentOrganizationInfo(StudentVO vo, Long userId) {
+        try {
+            // 获取用户关联的组织
+            List<UserOrganization> userOrganizations = userOrganizationMapper.selectByUserId(userId);
+            
+            if (!userOrganizations.isEmpty()) {
+                // 获取组织ID列表
+                List<Long> orgIds = userOrganizations.stream()
+                        .map(UserOrganization::getOrganizationId)
+                        .collect(Collectors.toList());
+                
+                // 查询组织信息
+                List<Organization> organizations = organizationMapper.selectByIdsAndStatus(orgIds, 1);
+                
+                // 按级别分类组织信息
+                for (Organization org : organizations) {
+                    if (org.getOrgLevel() == 1) { // 学院
+                        vo.setCollegeName(org.getOrgName());
+                    }
+                    // major和className已经在学生表中有对应字段，这里不需要重复设置
+                }
+            }
+        } catch (Exception e) {
+            // 组织信息获取失败不影响主流程
+            System.err.println("获取学生组织信息失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 生成学年学期格式：xxxx-xxxx年第x学期
+     */
+    private String generateAcademicYearSemester(String grade, Integer currentYear, Integer currentSemester) {
+        try {
+            int gradeYear = Integer.parseInt(grade);
+            
+            // 计算当前所在的学年
+            // 如果是第一学期（上学期），学年起始为入学年 + (当前年级 - 1)
+            // 如果是第二学期（下学期），学年起始同样为入学年 + (当前年级 - 1)
+            int academicStartYear = gradeYear + (currentYear - 1);
+            int academicEndYear = academicStartYear + 1;
+            
+            String semesterText = currentSemester == 1 ? "第一学期" : "第二学期";
+            
+            return String.format("%d-%d年%s", academicStartYear, academicEndYear, semesterText);
+        } catch (Exception e) {
+            return "格式错误";
+        }
     }
 } 

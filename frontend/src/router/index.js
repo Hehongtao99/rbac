@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../views/Login.vue'
-import Dashboard from '../views/Dashboard.vue'
 import Layout from '../views/Layout.vue'
+import Dashboard from '../views/Dashboard.vue'
 import UserManagement from '../views/UserManagement.vue'
 import RoleManagement from '../views/RoleManagement.vue'
 import OrganizationManagement from '../views/OrganizationManagement.vue'
@@ -17,6 +17,7 @@ import CourseApplicationReview from '../views/admin/CourseApplicationReview.vue'
 import ScheduleManagement from '../views/teacher/ScheduleManagement.vue'
 import AllSchedules from '../views/admin/AllSchedules.vue'
 import Profile from '../views/Profile.vue'
+import CourseSelection from '../views/student/CourseSelection.vue'
 
 const routes = [
   {
@@ -156,6 +157,14 @@ const routes = [
           component: AllSchedules,
           meta: {
             title: '所有课程表'
+          }
+        },
+        {
+          path: '/student-course-selection/management',
+          name: 'CourseSelection',
+          component: CourseSelection,
+          meta: {
+            title: '学生选课'
           }
         },
       {

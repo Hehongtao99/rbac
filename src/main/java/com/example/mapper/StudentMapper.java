@@ -28,4 +28,10 @@ public interface StudentMapper {
     
     // 统计总数
     long selectCount(@Param("student") Student student);
+
+    // 根据用户ID查询学生
+    Student selectByUserId(@Param("userId") Long userId);
+
+    // 查询指定年份的最大学号
+    String selectMaxStudentNoByYear(@Param("year") String year);
 } 

@@ -28,4 +28,10 @@ public interface TeacherMapper {
     
     // 统计总数
     long selectCount(@Param("teacher") Teacher teacher);
+
+    // 根据用户ID查询教师
+    Teacher selectByUserId(@Param("userId") Long userId);
+
+    // 查询最大教师编号
+    String selectMaxTeacherNo();
 } 

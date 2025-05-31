@@ -433,9 +433,28 @@ const confirmNotice = async () => {
     
     submitLoading.value = true
     
+    // 处理提交数据，确保日期格式正确
+    const submitData = { ...noticeForm }
+    
+    // 如果没有设置发布时间但状态是发布，则设置为当前时间
+    if (submitData.status === 1 && !submitData.publishTime) {
+      const now = new Date()
+      submitData.publishTime = now.getFullYear() + '-' + 
+        String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(now.getDate()).padStart(2, '0') + ' ' + 
+        String(now.getHours()).padStart(2, '0') + ':' + 
+        String(now.getMinutes()).padStart(2, '0') + ':' + 
+        String(now.getSeconds()).padStart(2, '0')
+    }
+    
+    // 如果状态不是发布，清空发布时间
+    if (submitData.status !== 1) {
+      submitData.publishTime = null
+    }
+    
     const response = isEdit.value 
-      ? await updateNotice(noticeForm)
-      : await addNotice(noticeForm)
+      ? await updateNotice(submitData)
+      : await addNotice(submitData)
       
     if (response.code === 200) {
       ElMessage.success(isEdit.value ? '修改成功' : '新增成功')
@@ -445,7 +464,8 @@ const confirmNotice = async () => {
       ElMessage.error(response.message || '操作失败')
     }
   } catch (error) {
-    ElMessage.error('操作失败')
+    console.error('提交错误:', error)
+    ElMessage.error('操作失败: ' + (error.message || '未知错误'))
   } finally {
     submitLoading.value = false
   }
