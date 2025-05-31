@@ -199,6 +199,7 @@ public class AdminServiceImpl implements AdminService {
     }
     
     @Override
+    @Transactional
     public Result<Void> assignRole(Long userId, Long roleId) {
         try {
             // 检查用户是否存在
@@ -213,17 +214,29 @@ public class AdminServiceImpl implements AdminService {
                 return Result.error("角色不存在");
             }
             
-            // 检查是否已经分配过该角色
+            // 获取用户当前的所有角色
             List<UserRole> existUserRoles = userRoleMapper.selectByUserId(userId);
+            
+            // 检查用户是否已经拥有该角色
             boolean hasRole = existUserRoles.stream().anyMatch(ur -> ur.getRoleId().equals(roleId));
             if (hasRole) {
                 return Result.error("用户已拥有该角色");
             }
             
-            // 分配角色
+            // 先删除用户的所有旧角色（软删除）
+            if (!existUserRoles.isEmpty()) {
+                for (UserRole existUserRole : existUserRoles) {
+                    existUserRole.setDeleted(1);
+                    userRoleMapper.updateById(existUserRole);
+                }
+            }
+            
+            // 分配新角色
             UserRole userRole = new UserRole();
             userRole.setUserId(userId);
             userRole.setRoleId(roleId);
+            userRole.setCreateTime(LocalDateTime.now());
+            userRole.setDeleted(0);
             userRoleMapper.insert(userRole);
             
             return Result.success();
@@ -589,6 +602,8 @@ public class AdminServiceImpl implements AdminService {
             // 删除用户原有的组织关联
             userOrganizationMapper.deleteByUserId(userId);
             
+            LocalDateTime now = LocalDateTime.now();
+            
             // 添加新的用户组织关联
             if (request.getCollegeId() != null) {
                 // 检查学院是否存在
@@ -600,6 +615,8 @@ public class AdminServiceImpl implements AdminService {
                 UserOrganization userOrg = new UserOrganization();
                 userOrg.setUserId(userId);
                 userOrg.setOrganizationId(request.getCollegeId());
+                userOrg.setCreateTime(now);
+                userOrg.setUpdateTime(now);
                 userOrganizationMapper.insert(userOrg);
             }
             
@@ -613,6 +630,8 @@ public class AdminServiceImpl implements AdminService {
                 UserOrganization userOrg = new UserOrganization();
                 userOrg.setUserId(userId);
                 userOrg.setOrganizationId(request.getMajorId());
+                userOrg.setCreateTime(now);
+                userOrg.setUpdateTime(now);
                 userOrganizationMapper.insert(userOrg);
             }
             
@@ -627,6 +646,8 @@ public class AdminServiceImpl implements AdminService {
                     UserOrganization userOrg = new UserOrganization();
                     userOrg.setUserId(userId);
                     userOrg.setOrganizationId(classId);
+                    userOrg.setCreateTime(now);
+                    userOrg.setUpdateTime(now);
                     userOrganizationMapper.insert(userOrg);
                 }
             }

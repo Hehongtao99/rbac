@@ -36,6 +36,11 @@ public interface ScheduleMapper {
     List<Schedule> selectConflict(@Param("teacherId") Long teacherId, @Param("weekNumber") Integer weekNumber, 
                                  @Param("dayOfWeek") Integer dayOfWeek, @Param("timeSlot") Integer timeSlot);
     
+    // 查询班级时间冲突（检查指定班级在指定时间是否已有课程）
+    List<Schedule> selectClassTimeConflict(@Param("classId") Long classId, @Param("academicYear") String academicYear,
+                                          @Param("weekNumber") Integer weekNumber, @Param("dayOfWeek") Integer dayOfWeek, 
+                                          @Param("timeSlot") Integer timeSlot);
+    
     // 根据教师ID和学年查询
     List<Schedule> selectByTeacherAndAcademicYear(@Param("teacherId") Long teacherId, @Param("academicYear") String academicYear);
     
@@ -49,6 +54,11 @@ public interface ScheduleMapper {
                                                                         @Param("academicYear") String academicYear, 
                                                                         @Param("weekNumber") Integer weekNumber, 
                                                                         @Param("classId") Long classId);
+    
+    // 根据班级ID、学年和周次查询（查询该班级所有教师的课程）
+    List<Schedule> selectByClassAndAcademicYearAndWeekNumber(@Param("classId") Long classId, 
+                                                            @Param("academicYear") String academicYear, 
+                                                            @Param("weekNumber") Integer weekNumber);
     
     // 管理员查询：根据学年、周次、教师姓名、课程名称查询
     List<Schedule> selectByAcademicYearAndWeekNumberAndTeacherNameAndCourseName(@Param("academicYear") String academicYear,

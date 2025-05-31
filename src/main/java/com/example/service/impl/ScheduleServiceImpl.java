@@ -73,10 +73,10 @@ public class ScheduleServiceImpl implements ScheduleService {
             throw new RuntimeException("您没有权限为该班级安排课程");
         }
         
-        // 检查时间冲突 - 检查该教师在该时间段是否已有任何班级的课程
+        // 检查时间冲突 - 检查该教师和该班级在该时间段是否已有课程
         Boolean conflict = checkTimeConflict(
                 scheduleDTO.getAcademicYear(), scheduleDTO.getWeekNumber(), 
-                scheduleDTO.getDayOfWeek(), scheduleDTO.getTimeSlot(), null); // 传入null检查所有班级
+                scheduleDTO.getDayOfWeek(), scheduleDTO.getTimeSlot(), scheduleDTO.getClassId());
         if (conflict) {
             throw new RuntimeException("该时间段已有课程安排，无法添加");
         }
@@ -257,7 +257,19 @@ public class ScheduleServiceImpl implements ScheduleService {
         
         Long teacherId = currentUser.getId();
         
-        List<Schedule> schedules = scheduleMapper.selectByTeacherAndAcademicYearAndWeekNumberAndClassId(teacherId, academicYear, weekNumber, classId);
+        List<Schedule> schedules;
+        
+        if (classId != null) {
+            // 如果指定了班级ID，查询该班级的所有课程（所有教师添加的）
+            // 但需要验证当前教师是否有权限查看该班级
+            if (!teacherClassService.hasClassPermission(teacherId, classId)) {
+                throw new RuntimeException("您没有权限查看该班级的课程表");
+            }
+            schedules = scheduleMapper.selectByClassAndAcademicYearAndWeekNumber(classId, academicYear, weekNumber);
+        } else {
+            // 如果没有指定班级，查询该教师有权限的所有班级的课程
+            schedules = scheduleMapper.selectByTeacherAndAcademicYearAndWeekNumberAndClassId(teacherId, academicYear, weekNumber, null);
+        }
         
         // 按星期分组
         Map<String, List<ScheduleVO>> weeklySchedule = new HashMap<>();
@@ -331,16 +343,21 @@ public class ScheduleServiceImpl implements ScheduleService {
         
         Long teacherId = currentUser.getId();
         
-        List<Schedule> conflicts = scheduleMapper.selectConflict(teacherId, weekNumber, dayOfWeek, timeSlot);
-        
-        // 如果指定了班级，只检查该班级的冲突
-        if (classId != null) {
-            conflicts = conflicts.stream()
-                    .filter(schedule -> schedule.getClassId().equals(classId))
-                    .collect(Collectors.toList());
+        // 检查教师时间冲突（该教师在该时间段是否已有课程）
+        List<Schedule> teacherConflicts = scheduleMapper.selectConflict(teacherId, weekNumber, dayOfWeek, timeSlot);
+        if (!teacherConflicts.isEmpty()) {
+            return true; // 教师时间冲突
         }
         
-        return !conflicts.isEmpty();
+        // 如果指定了班级，检查班级时间冲突（该班级在该时间段是否已有课程）
+        if (classId != null) {
+            List<Schedule> classConflicts = scheduleMapper.selectClassTimeConflict(classId, academicYear, weekNumber, dayOfWeek, timeSlot);
+            if (!classConflicts.isEmpty()) {
+                return true; // 班级时间冲突
+            }
+        }
+        
+        return false; // 无冲突
     }
 
     @Override

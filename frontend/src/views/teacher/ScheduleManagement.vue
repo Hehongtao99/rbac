@@ -116,14 +116,18 @@
               <!-- 选择特定班级时显示单个课程 -->
               <div v-if="filterForm.classId && getCellCourse(timeSlot.timeSlot, day.value)" 
                    class="course-content"
-                   :draggable="getCellCourse(timeSlot.timeSlot, day.value).classId === filterForm.classId"
+                   :class="{ 'other-teacher-course': !isCurrentUserCourse(getCellCourse(timeSlot.timeSlot, day.value)) }"
+                   :draggable="isCurrentUserCourse(getCellCourse(timeSlot.timeSlot, day.value))"
                    @dragstart="handleDragStart($event, getCellCourse(timeSlot.timeSlot, day.value))"
-                   @dragend="handleDragEnd">
+                   @dragend="handleDragEnd"
+                   @click.stop="viewCourseDetails(getCellCourse(timeSlot.timeSlot, day.value))">
                 <div class="course-name">{{ getCellCourse(timeSlot.timeSlot, day.value).courseName }}</div>
                 <div class="course-time">{{ getDetailedTimeDisplay(timeSlot.timeSlot) }}</div>
                 <div class="course-teacher">{{ getCellCourse(timeSlot.timeSlot, day.value).teacherName }}</div>
                 <div v-if="getCellCourse(timeSlot.timeSlot, day.value).className" class="course-class">{{ getCellCourse(timeSlot.timeSlot, day.value).className }}</div>
-                <div class="course-actions">
+                
+                <!-- 只有自己的课程才显示操作按钮 -->
+                <div v-if="isCurrentUserCourse(getCellCourse(timeSlot.timeSlot, day.value))" class="course-actions">
                   <el-button type="text" size="small" @click.stop="editCourse(getCellCourse(timeSlot.timeSlot, day.value))">
                     <el-icon><Edit /></el-icon>
                   </el-button>
@@ -131,7 +135,14 @@
                     <el-icon><Delete /></el-icon>
                   </el-button>
                 </div>
-                <div v-if="getCellCourse(timeSlot.timeSlot, day.value).classId === filterForm.classId" class="drag-handle">⋮⋮</div>
+                
+                <!-- 只有自己的课程才显示拖拽手柄 -->
+                <div v-if="isCurrentUserCourse(getCellCourse(timeSlot.timeSlot, day.value))" class="drag-handle">⋮⋮</div>
+                
+                <!-- 其他教师的课程显示只读标识 -->
+                <div v-if="!isCurrentUserCourse(getCellCourse(timeSlot.timeSlot, day.value))" class="readonly-indicator">
+                  <el-icon><Lock /></el-icon>
+                </div>
               </div>
 
               <!-- 选择特定班级时，显示其他班级的课程（淡化显示） -->
@@ -156,14 +167,18 @@
                   v-for="course in getCellCourses(timeSlot.timeSlot, day.value)" 
                   :key="course.id"
                   class="course-item"
+                  :class="{ 'other-teacher-course': !isCurrentUserCourse(course) }"
                   :style="{ backgroundColor: getClassColor(course.classId) }"
-                  draggable="true"
+                  :draggable="isCurrentUserCourse(course)"
                   @dragstart="handleDragStart($event, course)"
                   @dragend="handleDragEnd"
-                  @click.stop="editCourse(course)">
+                  @click.stop="viewCourseDetails(course)">
                   <div class="course-name">{{ course.courseName }}</div>
                   <div class="course-class">{{ course.className }}</div>
-                  <div class="course-actions">
+                  <div class="course-teacher">{{ course.teacherName }}</div>
+                  
+                  <!-- 只有自己的课程才显示操作按钮 -->
+                  <div v-if="isCurrentUserCourse(course)" class="course-actions">
                     <el-button type="text" size="small" @click.stop="editCourse(course)">
                       <el-icon><Edit /></el-icon>
                     </el-button>
@@ -171,7 +186,14 @@
                       <el-icon><Delete /></el-icon>
                     </el-button>
                   </div>
-                  <div class="drag-handle">⋮⋮</div>
+                  
+                  <!-- 只有自己的课程才显示拖拽手柄 -->
+                  <div v-if="isCurrentUserCourse(course)" class="drag-handle">⋮⋮</div>
+                  
+                  <!-- 其他教师的课程显示只读标识 -->
+                  <div v-if="!isCurrentUserCourse(course)" class="readonly-indicator">
+                    <el-icon><Lock /></el-icon>
+                  </div>
                 </div>
               </div>
 
@@ -303,7 +325,7 @@
     </el-dialog>
 
     <!-- 编辑课程对话框 -->
-    <el-dialog v-model="showEditDialog" title="课程详情" width="400px">
+    <el-dialog v-model="showEditDialog" :title="editCourseForm.isReadOnly ? '课程详情（只读）' : '课程详情'" width="400px">
       <el-form :model="editCourseForm" label-width="80px">
         <el-form-item label="课程名称">
           <el-input v-model="editCourseForm.courseName" readonly></el-input>
@@ -316,6 +338,14 @@
         </el-form-item>
         <el-form-item label="班级" v-if="editCourseForm.className">
           <el-input v-model="editCourseForm.className" readonly></el-input>
+        </el-form-item>
+        <el-form-item v-if="editCourseForm.isReadOnly" label="说明">
+          <el-alert 
+            title="这是其他教师的课程，您只能查看详情，无法编辑或删除" 
+            type="info" 
+            :closable="false"
+            show-icon>
+          </el-alert>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -330,7 +360,7 @@
 <script>
 import scheduleApi from '../../api/schedule'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Edit, Delete } from '@element-plus/icons-vue'
+import { Edit, Delete, Lock } from '@element-plus/icons-vue'
 import draggable from 'vuedraggable'
 
 export default {
@@ -338,6 +368,7 @@ export default {
   components: {
     Edit,
     Delete,
+    Lock,
     draggable
   },
   data() {
@@ -348,6 +379,7 @@ export default {
       quickAddLoading: false,
       addLoading: false,
       pageLoading: true, // 页面加载状态
+      currentUserId: null, // 当前登录用户ID
       filterForm: {
         academicYear: '2024-2025',
         weekNumber: null,
@@ -435,6 +467,9 @@ export default {
       try {
         this.pageLoading = true
         
+        // 获取当前用户信息
+        await this.getCurrentUserInfo()
+        
         // 恢复上次查看的位置
         this.restoreViewPosition()
         
@@ -458,6 +493,28 @@ export default {
       } finally {
         this.pageLoading = false
       }
+    },
+
+    // 获取当前用户信息
+    async getCurrentUserInfo() {
+      try {
+        // 从localStorage获取用户信息
+        const userInfo = localStorage.getItem('userInfo')
+        if (userInfo) {
+          const user = JSON.parse(userInfo)
+          this.currentUserId = user.id
+          console.log('当前用户ID:', this.currentUserId)
+        } else {
+          console.warn('未找到用户信息，可能需要重新登录')
+        }
+      } catch (error) {
+        console.error('获取用户信息失败:', error)
+      }
+    },
+
+    // 检查课程是否属于当前用户
+    isCurrentUserCourse(course) {
+      return course && course.teacherId === this.currentUserId
     },
 
     // 获取当前周次（可以根据实际需求调整逻辑）
@@ -593,27 +650,19 @@ export default {
       if (!this.filterForm.weekNumber) return
       
       try {
-        // 当选择特定班级时，需要先加载所有班级的数据以显示其他班级的课程
-        if (this.filterForm.classId) {
-          // 先加载所有班级的课程数据
-          const allResponse = await scheduleApi.getWeeklyScheduleByClass(
-            this.filterForm.academicYear, 
-            this.filterForm.weekNumber,
-            null // 获取所有班级
-          )
-          if (allResponse.code === 200) {
-            this.scheduleData = allResponse.data || {}
-          }
+        // 直接调用API获取课程表数据
+        // 如果指定了班级ID，后端会返回该班级的所有课程（所有教师添加的）
+        // 如果没有指定班级ID，后端会返回该教师有权限的所有班级的课程
+        const response = await scheduleApi.getWeeklyScheduleByClass(
+          this.filterForm.academicYear, 
+          this.filterForm.weekNumber,
+          this.filterForm.classId
+        )
+        
+        if (response.code === 200) {
+          this.scheduleData = response.data || {}
         } else {
-          // 选择所有班级时，直接加载所有数据
-          const response = await scheduleApi.getWeeklyScheduleByClass(
-            this.filterForm.academicYear, 
-            this.filterForm.weekNumber,
-            this.filterForm.classId
-          )
-          if (response.code === 200) {
-            this.scheduleData = response.data || {}
-          }
+          ElMessage.error(response.message || '获取课程表失败')
         }
         
         // 加载完成后保存当前查看位置
@@ -857,10 +906,26 @@ export default {
 
     editCourse(course) {
       this.editCourseForm = { ...course }
+      
+      // 检查是否是当前用户的课程
+      if (!this.isCurrentUserCourse(course)) {
+        // 其他教师的课程，显示只读详情
+        this.editCourseForm.isReadOnly = true
+      } else {
+        // 自己的课程，可以编辑
+        this.editCourseForm.isReadOnly = false
+      }
+      
       this.showEditDialog = true
     },
 
     async removeCourse(course) {
+      // 检查是否是当前用户的课程
+      if (!this.isCurrentUserCourse(course)) {
+        ElMessage.warning('您只能删除自己的课程')
+        return
+      }
+      
       try {
         await ElMessageBox.confirm('确定要删除这个课程吗？', '确认删除', {
           type: 'warning'
@@ -976,6 +1041,13 @@ export default {
     },
 
     handleDragStart(event, course) {
+      // 检查是否是当前用户的课程
+      if (!this.isCurrentUserCourse(course)) {
+        event.preventDefault()
+        ElMessage.warning('只能拖拽自己的课程')
+        return
+      }
+      
       // 如果选择了特定班级，只允许拖拽当前班级的课程
       if (this.filterForm.classId && course.classId !== this.filterForm.classId) {
         event.preventDefault()
@@ -1086,6 +1158,10 @@ export default {
       } catch (error) {
         throw error
       }
+    },
+
+    viewCourseDetails(course) {
+      this.editCourse(course)
     }
   }
 }
@@ -1493,5 +1569,68 @@ export default {
   0% { opacity: 0.6; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.05); }
   100% { opacity: 0.6; transform: scale(1); }
+}
+
+/* 其他教师的课程样式 */
+.other-teacher-course {
+  background-color: #f5f5f5 !important;
+  opacity: 0.7;
+  cursor: pointer !important; /* 允许点击查看详情 */
+  pointer-events: auto; /* 允许点击查看详情 */
+  position: relative;
+}
+
+.other-teacher-course .course-name {
+  color: #909399 !important;
+}
+
+.other-teacher-course .course-teacher,
+.other-teacher-course .course-class,
+.other-teacher-course .course-time {
+  color: #c0c4cc !important;
+}
+
+.other-teacher-course:hover {
+  transform: translateY(-1px) !important; /* 保持轻微的悬停效果 */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important; /* 轻微的阴影效果 */
+  background-color: #eeeeee !important;
+}
+
+/* 只读标识样式 */
+.readonly-indicator {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  color: #c0c4cc;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* 确保其他教师的课程不能拖拽 */
+.other-teacher-course[draggable="false"] {
+  cursor: not-allowed !important;
+}
+
+/* 多课程显示时的其他教师课程样式 */
+.course-item.other-teacher-course {
+  background-color: #f5f5f5 !important;
+  opacity: 0.7;
+  cursor: pointer !important; /* 允许点击查看详情 */
+  pointer-events: auto; /* 允许点击查看详情 */
+}
+
+.course-item.other-teacher-course:hover {
+  transform: translateY(-1px) !important; /* 保持轻微的悬停效果 */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important; /* 轻微的阴影效果 */
+  background-color: #eeeeee !important;
+}
+
+.course-item.other-teacher-course .course-name {
+  color: #909399 !important;
+}
+
+.course-item.other-teacher-course .course-class,
+.course-item.other-teacher-course .course-teacher {
+  color: #c0c4cc !important;
 }
 </style> 

@@ -515,6 +515,7 @@ export default {
         ElMessage.info('权限已更新，请查看最新菜单和按钮')
       } catch (error) {
         console.error('分配角色失败:', error)
+        ElMessage.error(error.response?.data?.message || '分配角色失败')
       } finally {
         assignLoading.value = false
       }

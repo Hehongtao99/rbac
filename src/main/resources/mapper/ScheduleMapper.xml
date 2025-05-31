@@ -136,6 +136,18 @@
           AND deleted = 0
     </select>
 
+    <!-- 查询班级时间冲突（检查指定班级在指定时间是否已有课程） -->
+    <select id="selectClassTimeConflict" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_schedule
+        WHERE class_id = #{classId} 
+          AND academic_year = #{academicYear}
+          AND week_number = #{weekNumber} 
+          AND day_of_week = #{dayOfWeek} 
+          AND time_slot = #{timeSlot} 
+          AND deleted = 0
+    </select>
+
     <!-- 根据教师ID和学年查询 -->
     <select id="selectByTeacherAndAcademicYear" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
@@ -171,6 +183,17 @@
             </if>
         </where>
         ORDER BY day_of_week ASC, time_slot ASC
+    </select>
+
+    <!-- 根据班级ID、学年和周次查询（查询该班级所有教师的课程） -->
+    <select id="selectByClassAndAcademicYearAndWeekNumber" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_schedule
+        WHERE class_id = #{classId} 
+          AND academic_year = #{academicYear} 
+          AND week_number = #{weekNumber} 
+          AND deleted = 0
+        ORDER BY day_of_week ASC, time_slot ASC, teacher_name ASC
     </select>
 
     <!-- 管理员查询：根据学年、周次、教师姓名、课程名称查询 -->
