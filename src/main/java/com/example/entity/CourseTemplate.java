@@ -19,6 +19,10 @@ public class CourseTemplate {
     
     private Integer maxStudents;
     
+    private Long collegeId;
+    
+    private Long majorId;
+    
     private Integer status;
     
     private LocalDateTime createTime;

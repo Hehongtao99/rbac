@@ -11,6 +11,8 @@
         <result column="academic_year" property="academicYear" jdbcType="VARCHAR"/>
         <result column="semester" property="semester" jdbcType="VARCHAR"/>
         <result column="max_students" property="maxStudents" jdbcType="INTEGER"/>
+        <result column="college_id" property="collegeId" jdbcType="BIGINT"/>
+        <result column="major_id" property="majorId" jdbcType="BIGINT"/>
         <result column="status" property="status" jdbcType="INTEGER"/>
         <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
         <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
@@ -19,13 +21,13 @@
 
     <!-- 基础字段 -->
     <sql id="Base_Column_List">
-        id, template_name, description, course_hours, academic_year, semester, max_students, status, create_time, update_time, deleted
+        id, template_name, description, course_hours, academic_year, semester, max_students, college_id, major_id, status, create_time, update_time, deleted
     </sql>
 
     <!-- 插入 -->
     <insert id="insert" parameterType="com.example.entity.CourseTemplate" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO sys_course_template (template_name, description, course_hours, academic_year, semester, max_students, status, create_time, update_time, deleted)
-        VALUES (#{templateName}, #{description}, #{courseHours}, #{academicYear}, #{semester}, #{maxStudents}, #{status}, #{createTime}, #{updateTime}, #{deleted})
+        INSERT INTO sys_course_template (template_name, description, course_hours, academic_year, semester, max_students, college_id, major_id, status, create_time, update_time, deleted)
+        VALUES (#{templateName}, #{description}, #{courseHours}, #{academicYear}, #{semester}, #{maxStudents}, #{collegeId}, #{majorId}, #{status}, #{createTime}, #{updateTime}, #{deleted})
     </insert>
 
     <!-- 根据ID删除 -->
@@ -43,6 +45,8 @@
             <if test="academicYear != null">academic_year = #{academicYear},</if>
             <if test="semester != null">semester = #{semester},</if>
             <if test="maxStudents != null">max_students = #{maxStudents},</if>
+            <if test="collegeId != null">college_id = #{collegeId},</if>
+            <if test="majorId != null">major_id = #{majorId},</if>
             <if test="status != null">status = #{status},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
         </set>
@@ -70,6 +74,12 @@
             </if>
             <if test="courseTemplate.semester != null and courseTemplate.semester != ''">
                 AND semester = #{courseTemplate.semester}
+            </if>
+            <if test="courseTemplate.collegeId != null">
+                AND college_id = #{courseTemplate.collegeId}
+            </if>
+            <if test="courseTemplate.majorId != null">
+                AND major_id = #{courseTemplate.majorId}
             </if>
             <if test="courseTemplate.status != null">
                 AND status = #{courseTemplate.status}
@@ -103,33 +113,133 @@
                 AND (template_name LIKE CONCAT('%', #{keyword}, '%')
                 OR description LIKE CONCAT('%', #{keyword}, '%'))
             </if>
+            <if test="academicYear != null and academicYear != ''">
+                AND academic_year = #{academicYear}
+            </if>
+            <if test="semester != null and semester != ''">
+                AND semester = #{semester}
+            </if>
+            <if test="collegeId != null">
+                AND college_id = #{collegeId}
+            </if>
+            <if test="majorId != null">
+                AND major_id = #{majorId}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            <if test="enabledOnly != null and enabledOnly == true">
+                AND status = 1
+            </if>
         </where>
         ORDER BY create_time DESC
         LIMIT #{offset}, #{limit}
     </select>
 
-    <!-- 条件分页查询 -->
-    <select id="selectPageByCondition" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
+    <!-- 分页查询总数 -->
+    <select id="selectPageCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
         FROM sys_course_template
         <where>
             deleted = 0
             <if test="keyword != null and keyword != ''">
-                AND (template_name LIKE CONCAT('%', #{keyword}, '%')
-                OR description LIKE CONCAT('%', #{keyword}, '%'))
+                AND template_name LIKE CONCAT('%', #{keyword}, '%')
             </if>
-            <if test="courseTemplate.academicYear != null and courseTemplate.academicYear != ''">
-                AND academic_year = #{courseTemplate.academicYear}
+            <if test="academicYear != null and academicYear != ''">
+                AND academic_year = #{academicYear}
             </if>
-            <if test="courseTemplate.semester != null and courseTemplate.semester != ''">
-                AND semester = #{courseTemplate.semester}
+            <if test="semester != null and semester != ''">
+                AND semester = #{semester}
             </if>
-            <if test="courseTemplate.status != null">
-                AND status = #{courseTemplate.status}
+            <if test="collegeId != null">
+                AND college_id = #{collegeId}
             </if>
+            <if test="majorId != null">
+                AND major_id = #{majorId}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            <if test="enabledOnly != null and enabledOnly">
+                AND status = 1
+            </if>
+        </where>
+    </select>
+
+    <!-- 教师专用分页查询（根据教师学院专业筛选可申请的课程模板） -->
+    <select id="selectPageForTeacher" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_course_template
+        <where>
+            deleted = 0 AND status = 1
+            <if test="keyword != null and keyword != ''">
+                AND template_name LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="academicYear != null and academicYear != ''">
+                AND academic_year = #{academicYear}
+            </if>
+            <if test="semester != null and semester != ''">
+                AND semester = #{semester}
+            </if>
+            <!-- 学院专业匹配逻辑 -->
+            AND (
+                <!-- 情况1：课程模板没有设置学院专业限制，所有教师都可以申请 -->
+                (college_id IS NULL AND major_id IS NULL)
+                <if test="teacherCollegeId != null or teacherMajorId != null">
+                    OR (
+                        <!-- 情况2：课程模板设置了学院专业限制，需要匹配教师的学院专业 -->
+                        <if test="teacherCollegeId != null">
+                            (college_id IS NULL OR college_id = #{teacherCollegeId})
+                        </if>
+                        <if test="teacherCollegeId != null and teacherMajorId != null">
+                            AND
+                        </if>
+                        <if test="teacherMajorId != null">
+                            (major_id IS NULL OR major_id = #{teacherMajorId})
+                        </if>
+                    )
+                </if>
+            )
         </where>
         ORDER BY create_time DESC
         LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 教师专用分页查询总数 -->
+    <select id="selectPageCountForTeacher" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_course_template
+        <where>
+            deleted = 0 AND status = 1
+            <if test="keyword != null and keyword != ''">
+                AND template_name LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="academicYear != null and academicYear != ''">
+                AND academic_year = #{academicYear}
+            </if>
+            <if test="semester != null and semester != ''">
+                AND semester = #{semester}
+            </if>
+            <!-- 学院专业匹配逻辑 -->
+            AND (
+                <!-- 情况1：课程模板没有设置学院专业限制，所有教师都可以申请 -->
+                (college_id IS NULL AND major_id IS NULL)
+                <if test="teacherCollegeId != null or teacherMajorId != null">
+                    OR (
+                        <!-- 情况2：课程模板设置了学院专业限制，需要匹配教师的学院专业 -->
+                        <if test="teacherCollegeId != null">
+                            (college_id IS NULL OR college_id = #{teacherCollegeId})
+                        </if>
+                        <if test="teacherCollegeId != null and teacherMajorId != null">
+                            AND
+                        </if>
+                        <if test="teacherMajorId != null">
+                            (major_id IS NULL OR major_id = #{teacherMajorId})
+                        </if>
+                    )
+                </if>
+            )
+        </where>
     </select>
 
     <!-- 统计总数 -->
@@ -149,6 +259,12 @@
             </if>
             <if test="courseTemplate.status != null">
                 AND status = #{courseTemplate.status}
+            </if>
+            <if test="courseTemplate.collegeId != null">
+                AND college_id = #{courseTemplate.collegeId}
+            </if>
+            <if test="courseTemplate.majorId != null">
+                AND major_id = #{courseTemplate.majorId}
             </if>
         </where>
     </select>

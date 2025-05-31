@@ -27,11 +27,28 @@ public interface CourseTemplateMapper {
     List<CourseTemplate> selectByAcademicYear(@Param("academicYear") String academicYear);
     
     // 分页查询
-    List<CourseTemplate> selectPage(@Param("offset") int offset, @Param("limit") int limit, @Param("keyword") String keyword);
+    List<CourseTemplate> selectPage(@Param("offset") int offset, @Param("limit") int limit, 
+                                   @Param("keyword") String keyword, @Param("academicYear") String academicYear,
+                                   @Param("semester") String semester, @Param("collegeId") Long collegeId,
+                                   @Param("majorId") Long majorId, @Param("status") Integer status,
+                                   @Param("enabledOnly") Boolean enabledOnly);
     
-    // 条件分页查询
-    List<CourseTemplate> selectPageByCondition(@Param("offset") int offset, @Param("limit") int limit, 
-                                              @Param("keyword") String keyword, @Param("courseTemplate") CourseTemplate courseTemplate);
+    // 分页查询总数
+    long selectPageCount(@Param("keyword") String keyword, @Param("academicYear") String academicYear,
+                        @Param("semester") String semester, @Param("collegeId") Long collegeId,
+                        @Param("majorId") Long majorId, @Param("status") Integer status,
+                        @Param("enabledOnly") Boolean enabledOnly);
+    
+    // 教师专用分页查询（根据教师学院专业筛选）
+    List<CourseTemplate> selectPageForTeacher(@Param("offset") int offset, @Param("limit") int limit,
+                                             @Param("keyword") String keyword, @Param("academicYear") String academicYear,
+                                             @Param("semester") String semester, @Param("teacherCollegeId") Long teacherCollegeId,
+                                             @Param("teacherMajorId") Long teacherMajorId);
+    
+    // 教师专用分页查询总数
+    long selectPageCountForTeacher(@Param("keyword") String keyword, @Param("academicYear") String academicYear,
+                                  @Param("semester") String semester, @Param("teacherCollegeId") Long teacherCollegeId,
+                                  @Param("teacherMajorId") Long teacherMajorId);
     
     // 统计总数
     long selectCount(@Param("courseTemplate") CourseTemplate courseTemplate);

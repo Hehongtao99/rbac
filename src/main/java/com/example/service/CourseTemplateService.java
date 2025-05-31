@@ -1,7 +1,7 @@
 package com.example.service;
 
 import com.example.common.PageResult;
-import com.example.dto.CourseDTO;
+import com.example.dto.CourseTemplateDTO;
 import com.example.dto.CourseTemplatePageDTO;
 import com.example.vo.CourseTemplateVO;
 
@@ -18,14 +18,19 @@ public interface CourseTemplateService {
     PageResult<CourseTemplateVO> getEnabledTemplateList(CourseTemplatePageDTO pageDTO);
     
     /**
+     * 获取教师可申请的课程模板列表（根据教师的学院专业筛选）
+     */
+    PageResult<CourseTemplateVO> getAvailableTemplatesForTeacher(CourseTemplatePageDTO pageDTO);
+    
+    /**
      * 创建模板
      */
-    void createTemplate(CourseDTO templateDTO);
+    void createTemplate(CourseTemplateDTO templateDTO);
     
     /**
      * 更新模板
      */
-    void updateTemplate(Long id, CourseDTO templateDTO);
+    void updateTemplate(Long id, CourseTemplateDTO templateDTO);
     
     /**
      * 删除模板

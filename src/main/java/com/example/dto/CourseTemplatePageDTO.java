@@ -26,6 +26,16 @@ public class CourseTemplatePageDTO extends BasePageDTO {
     private String semester;
     
     /**
+     * 学院筛选
+     */
+    private Long collegeId;
+    
+    /**
+     * 专业筛选
+     */
+    private Long majorId;
+    
+    /**
      * 是否只查询启用的模板
      */
     private Boolean enabledOnly = false;

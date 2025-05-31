@@ -1,25 +1,34 @@
 import request from '../utils/request'
 
 // 获取课程模板列表
-export const getCourseTemplateList = (params) => {
+export function getCourseTemplateList(data) {
   return request({
     url: '/course-templates/list',
     method: 'post',
-    data: params
+    data
   })
 }
 
 // 获取启用的课程模板列表
-export const getEnabledCourseTemplateList = (params) => {
+export function getEnabledCourseTemplateList(data) {
   return request({
     url: '/course-templates/enabled',
     method: 'post',
-    data: params
+    data
+  })
+}
+
+// 获取教师可申请的课程模板列表
+export function getAvailableTemplatesForTeacher(data) {
+  return request({
+    url: '/course-templates/available-for-teacher',
+    method: 'post',
+    data
   })
 }
 
 // 创建课程模板
-export const createCourseTemplate = (data) => {
+export function createCourseTemplate(data) {
   return request({
     url: '/course-templates',
     method: 'post',
@@ -28,7 +37,7 @@ export const createCourseTemplate = (data) => {
 }
 
 // 更新课程模板
-export const updateCourseTemplate = (id, data) => {
+export function updateCourseTemplate(id, data) {
   return request({
     url: `/course-templates/${id}`,
     method: 'put',
@@ -37,7 +46,7 @@ export const updateCourseTemplate = (id, data) => {
 }
 
 // 删除课程模板
-export const deleteCourseTemplate = (id) => {
+export function deleteCourseTemplate(id) {
   return request({
     url: `/course-templates/${id}`,
     method: 'delete'
@@ -45,7 +54,7 @@ export const deleteCourseTemplate = (id) => {
 }
 
 // 获取课程模板详情
-export const getCourseTemplateById = (id) => {
+export function getCourseTemplateById(id) {
   return request({
     url: `/course-templates/${id}`,
     method: 'get'
