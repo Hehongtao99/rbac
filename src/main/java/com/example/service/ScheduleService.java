@@ -31,6 +31,11 @@ public interface ScheduleService extends IService<Schedule> {
     Map<String, List<ScheduleVO>> getWeeklySchedule(Long teacherId, String academicYear, Integer weekNumber);
     
     /**
+     * 获取某个班级某周的课程表
+     */
+    Map<String, List<ScheduleVO>> getWeeklyScheduleByClass(Long teacherId, String academicYear, Integer weekNumber, Long classId);
+    
+    /**
      * 删除课程表中的课程
      */
     void removeCourseFromSchedule(Long scheduleId);
@@ -38,12 +43,17 @@ public interface ScheduleService extends IService<Schedule> {
     /**
      * 检查时间冲突
      */
-    boolean checkTimeConflict(Long teacherId, String academicYear, Integer weekNumber, Integer dayOfWeek, Integer timeSlot);
+    boolean checkTimeConflict(Long teacherId, String academicYear, Integer weekNumber, Integer dayOfWeek, Integer timeSlot, Long classId);
     
     /**
      * 获取可选择的课程列表（教师申请通过的课程）
      */
     List<Map<String, Object>> getAvailableCourses(Long teacherId, String academicYear);
+    
+    /**
+     * 获取教师分配的班级列表
+     */
+    List<Map<String, Object>> getTeacherClasses(Long teacherId);
     
     /**
      * 管理员获取所有教师的课程表

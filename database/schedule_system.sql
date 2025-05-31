@@ -6,12 +6,13 @@ CREATE TABLE `sys_schedule` (
   `course_name` varchar(100) NOT NULL COMMENT '课程名称',
   `teacher_id` bigint(20) NOT NULL COMMENT '教师ID',
   `teacher_name` varchar(50) NOT NULL COMMENT '教师姓名',
+  `class_id` bigint(20) DEFAULT NULL COMMENT '班级ID',
+  `class_name` varchar(100) DEFAULT NULL COMMENT '班级名称',
   `academic_year` varchar(20) NOT NULL COMMENT '学年',
   `week_number` int(11) NOT NULL COMMENT '第几周 (1-20)',
   `day_of_week` int(11) NOT NULL COMMENT '星期几 (1-7, 1为周一)',
   `time_slot` int(11) NOT NULL COMMENT '时间段 (1-6)',
   `time_range` varchar(50) DEFAULT NULL COMMENT '时间范围文字描述',
-  `classroom` varchar(50) NOT NULL COMMENT '教室',
   `reduced_hours` int(11) DEFAULT 2 COMMENT '减少的课时数',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -19,6 +20,7 @@ CREATE TABLE `sys_schedule` (
   PRIMARY KEY (`id`),
   KEY `idx_teacher_academic` (`teacher_id`, `academic_year`),
   KEY `idx_course_id` (`course_id`),
+  KEY `idx_class_id` (`class_id`),
   KEY `idx_time_schedule` (`week_number`, `day_of_week`, `time_slot`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程表';
 

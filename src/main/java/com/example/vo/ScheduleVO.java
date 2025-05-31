@@ -11,13 +11,14 @@ public class ScheduleVO {
     private String courseName;
     private Long teacherId;
     private String teacherName;
+    private Long classId;
+    private String className;
     private String academicYear;
     private Integer weekNumber;
     private Integer dayOfWeek;
     private String dayOfWeekName;
     private Integer timeSlot;
     private String timeRange;
-    private String classroom;
     private Integer reducedHours;
     private LocalDateTime createTime;
 } 

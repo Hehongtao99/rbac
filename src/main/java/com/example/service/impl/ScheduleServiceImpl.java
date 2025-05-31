@@ -7,12 +7,15 @@ import com.example.entity.Course;
 import com.example.entity.TimeSlotConfig;
 import com.example.entity.User;
 import com.example.entity.CourseApplication;
+import com.example.entity.ClassCourseHours;
 import com.example.mapper.ScheduleMapper;
 import com.example.mapper.CourseMapper;
 import com.example.mapper.TimeSlotConfigMapper;
 import com.example.mapper.UserMapper;
 import com.example.mapper.CourseApplicationMapper;
 import com.example.service.ScheduleService;
+import com.example.service.TeacherClassService;
+import com.example.service.ClassCourseHoursService;
 import com.example.dto.ScheduleDTO;
 import com.example.vo.ScheduleVO;
 import com.example.util.UserContextUtil;
@@ -42,6 +45,12 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
 
     @Autowired
     private CourseApplicationMapper courseApplicationMapper;
+    
+    @Autowired
+    private TeacherClassService teacherClassService;
+    
+    @Autowired
+    private ClassCourseHoursService classCourseHoursService;
 
     @Override
     @Transactional
@@ -57,10 +66,15 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
                            ? currentUser.getNickname() 
                            : currentUser.getUsername();
         
-        // 检查时间冲突 - 使用JWT获取的teacherId
+        // 验证教师是否有权限操作指定班级
+        if (scheduleDTO.getClassId() != null && !teacherClassService.hasClassPermission(teacherId, scheduleDTO.getClassId())) {
+            throw new RuntimeException("您没有权限为该班级安排课程");
+        }
+        
+        // 检查时间冲突 - 使用JWT获取的teacherId和班级ID
         boolean conflict = checkTimeConflict(teacherId, 
                 scheduleDTO.getAcademicYear(), scheduleDTO.getWeekNumber(), 
-                scheduleDTO.getDayOfWeek(), scheduleDTO.getTimeSlot());
+                scheduleDTO.getDayOfWeek(), scheduleDTO.getTimeSlot(), scheduleDTO.getClassId());
         if (conflict) {
             throw new RuntimeException("该时间段已有课程安排，无法添加");
         }
@@ -80,13 +94,13 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
             throw new RuntimeException("只能添加已审核通过的课程");
         }
         
-        // 检查剩余课时是否足够
-        Integer remainingHours = application.getRemainingHours();
-        if (remainingHours == null) {
-            remainingHours = application.getCourseHours(); // 如果没有剩余课时字段，使用总课时
-        }
-        if (remainingHours < 1) {
-            throw new RuntimeException("课程剩余课时不足（剩余" + remainingHours + "课时）");
+        // 获取或创建班级课程课时记录
+        ClassCourseHours classCourseHours = classCourseHoursService.getOrCreateClassCourseHours(
+            application, scheduleDTO.getClassId(), scheduleDTO.getClassName());
+        
+        // 检查该班级的剩余课时是否足够
+        if (classCourseHours.getRemainingHours() < 1) {
+            throw new RuntimeException("该班级课程剩余课时不足（剩余" + classCourseHours.getRemainingHours() + "课时）");
         }
         
         // 获取时间段信息
@@ -96,22 +110,18 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
         
         // 创建课程表记录
         Schedule schedule = new Schedule();
-        // 复制基本属性，但不包括reducedHours
-        schedule.setCourseId(scheduleDTO.getCourseId());
-        schedule.setCourseName(scheduleDTO.getCourseName());
+        schedule.setCourseId(application.getId()); // 使用申请ID作为课程ID
+        schedule.setCourseName(application.getCourseName());
+        schedule.setTeacherId(teacherId); // 使用JWT获取的teacherId
+        schedule.setTeacherName(teacherName); // 使用JWT获取的教师姓名
+        schedule.setClassId(scheduleDTO.getClassId());
+        schedule.setClassName(scheduleDTO.getClassName());
+        schedule.setClassCourseHoursId(classCourseHours.getId()); // 关联班级课程课时记录
         schedule.setAcademicYear(scheduleDTO.getAcademicYear());
         schedule.setWeekNumber(scheduleDTO.getWeekNumber());
         schedule.setDayOfWeek(scheduleDTO.getDayOfWeek());
         schedule.setTimeSlot(scheduleDTO.getTimeSlot());
-        
-        // 重写关键属性，确保数据正确
-        schedule.setCourseId(application.getId()); // 使用申请ID作为课程ID
-        schedule.setTeacherId(teacherId); // 使用JWT获取的teacherId
-        schedule.setCourseName(application.getCourseName());
-        schedule.setTeacherName(teacherName); // 使用JWT获取的教师姓名
-        schedule.setReducedHours(1); // 强制设置为1课时，不从DTO复制
-        // 设置默认教室值，因为前端已移除教室字段
-        schedule.setClassroom("待定");
+        schedule.setReducedHours(1); // 每次课程消耗1课时
         if (timeSlot != null) {
             schedule.setTimeRange(timeSlot.getStartTime() + "-" + timeSlot.getEndTime());
         }
@@ -119,23 +129,21 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
         // 保存课程表
         this.save(schedule);
         
-        // 扣减申请记录的剩余课时
-        Integer currentRemainingHours = application.getRemainingHours();
-        if (currentRemainingHours == null) {
-            currentRemainingHours = application.getCourseHours();
+        // 使用班级课程课时（扣减该班级的剩余课时）
+        boolean success = classCourseHoursService.useHours(classCourseHours.getId(), 1);
+        if (!success) {
+            throw new RuntimeException("课时扣减失败，请重试");
         }
         
-        System.out.println("=== 课时扣减调试信息 ===");
+        System.out.println("=== 班级课时扣减调试信息 ===");
         System.out.println("课程申请ID: " + application.getId());
         System.out.println("课程名称: " + application.getCourseName());
-        System.out.println("扣减前剩余课时: " + currentRemainingHours);
-        System.out.println("本次课程设置的reducedHours: " + schedule.getReducedHours());
-        
-        application.setRemainingHours(currentRemainingHours - 1);
-        System.out.println("扣减后剩余课时: " + application.getRemainingHours());
-        
-        courseApplicationMapper.updateById(application);
-        System.out.println("=== 课时扣减完成 ===");
+        System.out.println("班级ID: " + scheduleDTO.getClassId());
+        System.out.println("班级名称: " + scheduleDTO.getClassName());
+        System.out.println("班级课程课时记录ID: " + classCourseHours.getId());
+        System.out.println("扣减前该班级剩余课时: " + (classCourseHours.getRemainingHours() + 1));
+        System.out.println("扣减后该班级剩余课时: " + classCourseHours.getRemainingHours());
+        System.out.println("=== 班级课时扣减完成 ===");
     }
 
     @Override
@@ -146,9 +154,22 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
             throw new RuntimeException("课程表记录不存在");
         }
         
-        // 由于前端已移除教室字段，这里暂时不进行任何更新
-        // 如果需要更新其他信息，可以在这里添加
-        // 例如：schedule.setTimeRange(...);
+        // 验证教师权限
+        User currentUser = userContextUtil.getCurrentUser();
+        if (currentUser == null || !currentUser.getId().equals(schedule.getTeacherId())) {
+            throw new RuntimeException("您没有权限修改此课程表记录");
+        }
+        
+        // 验证班级权限
+        if (scheduleDTO.getClassId() != null && !teacherClassService.hasClassPermission(currentUser.getId(), scheduleDTO.getClassId())) {
+            throw new RuntimeException("您没有权限为该班级安排课程");
+        }
+        
+        // 更新班级信息
+        if (scheduleDTO.getClassId() != null) {
+            schedule.setClassId(scheduleDTO.getClassId());
+            schedule.setClassName(scheduleDTO.getClassName());
+        }
         
         this.updateById(schedule);
     }
@@ -192,6 +213,41 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
     }
 
     @Override
+    public Map<String, List<ScheduleVO>> getWeeklyScheduleByClass(Long teacherId, String academicYear, Integer weekNumber, Long classId) {
+        // 从JWT获取当前登录用户信息
+        User currentUser = userContextUtil.getCurrentUser();
+        if (currentUser == null) {
+            throw new RuntimeException("获取当前用户信息失败，请重新登录");
+        }
+        
+        // 使用JWT获取的用户ID
+        Long actualTeacherId = currentUser.getId();
+        
+        // 验证教师是否有权限查看该班级
+        if (classId != null && !teacherClassService.hasClassPermission(actualTeacherId, classId)) {
+            throw new RuntimeException("您没有权限查看该班级的课程表");
+        }
+        
+        LambdaQueryWrapper<Schedule> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Schedule::getTeacherId, actualTeacherId)
+               .eq(Schedule::getAcademicYear, academicYear)
+               .eq(Schedule::getWeekNumber, weekNumber);
+        
+        if (classId != null) {
+            wrapper.eq(Schedule::getClassId, classId);
+        }
+        
+        wrapper.orderBy(true, true, Schedule::getDayOfWeek)
+               .orderBy(true, true, Schedule::getTimeSlot);
+        
+        List<Schedule> schedules = this.list(wrapper);
+        List<ScheduleVO> scheduleVOs = schedules.stream().map(this::convertToVO).collect(Collectors.toList());
+        
+        // 按星期分组
+        return scheduleVOs.stream().collect(Collectors.groupingBy(ScheduleVO::getDayOfWeekName));
+    }
+
+    @Override
     @Transactional
     public void removeCourseFromSchedule(Long scheduleId) {
         Schedule schedule = this.getById(scheduleId);
@@ -199,23 +255,39 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
             throw new RuntimeException("课程表记录不存在");
         }
         
+        // 验证教师权限
+        User currentUser = userContextUtil.getCurrentUser();
+        if (currentUser == null || !currentUser.getId().equals(schedule.getTeacherId())) {
+            throw new RuntimeException("您没有权限删除此课程表记录");
+        }
+        
         System.out.println("=== 删除课程调试信息 ===");
         System.out.println("删除的课程表ID: " + scheduleId);
         System.out.println("课程表记录中的reducedHours: " + schedule.getReducedHours());
+        System.out.println("班级课程课时记录ID: " + schedule.getClassCourseHoursId());
         
-        // 恢复申请记录的剩余课时
-        CourseApplication application = courseApplicationMapper.selectById(schedule.getCourseId());
-        if (application != null) {
-            Integer currentRemainingHours = application.getRemainingHours();
-            if (currentRemainingHours == null) {
-                currentRemainingHours = 0;
+        // 恢复班级课程课时
+        if (schedule.getClassCourseHoursId() != null) {
+            boolean success = classCourseHoursService.restoreHours(schedule.getClassCourseHoursId(), schedule.getReducedHours());
+            if (!success) {
+                throw new RuntimeException("课时恢复失败，请重试");
             }
-            System.out.println("删除前申请记录剩余课时: " + currentRemainingHours);
-            System.out.println("准备恢复的课时数: " + schedule.getReducedHours());
-            
-            application.setRemainingHours(currentRemainingHours + schedule.getReducedHours());
-            System.out.println("删除后申请记录剩余课时: " + application.getRemainingHours());
-            courseApplicationMapper.updateById(application);
+            System.out.println("成功恢复班级课时: " + schedule.getReducedHours());
+        } else {
+            // 兼容旧数据：如果没有班级课程课时记录ID，则恢复到申请记录的剩余课时
+            CourseApplication application = courseApplicationMapper.selectById(schedule.getCourseId());
+            if (application != null) {
+                Integer currentRemainingHours = application.getRemainingHours();
+                if (currentRemainingHours == null) {
+                    currentRemainingHours = 0;
+                }
+                System.out.println("删除前申请记录剩余课时: " + currentRemainingHours);
+                System.out.println("准备恢复的课时数: " + schedule.getReducedHours());
+                
+                application.setRemainingHours(currentRemainingHours + schedule.getReducedHours());
+                System.out.println("删除后申请记录剩余课时: " + application.getRemainingHours());
+                courseApplicationMapper.updateById(application);
+            }
         }
         
         // 删除课程表记录
@@ -224,7 +296,7 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
     }
 
     @Override
-    public boolean checkTimeConflict(Long teacherId, String academicYear, Integer weekNumber, Integer dayOfWeek, Integer timeSlot) {
+    public boolean checkTimeConflict(Long teacherId, String academicYear, Integer weekNumber, Integer dayOfWeek, Integer timeSlot, Long classId) {
         // 从JWT获取当前登录用户信息
         User currentUser = userContextUtil.getCurrentUser();
         if (currentUser == null) {
@@ -240,6 +312,11 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
                .eq(Schedule::getWeekNumber, weekNumber)
                .eq(Schedule::getDayOfWeek, dayOfWeek)
                .eq(Schedule::getTimeSlot, timeSlot);
+        
+        // 如果指定了班级，检查该班级的时间冲突
+        if (classId != null) {
+            wrapper.eq(Schedule::getClassId, classId);
+        }
         
         return this.count(wrapper) > 0;
     }
@@ -268,13 +345,6 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
         System.out.println("找到的申请记录数: " + applications.size());
         
         return applications.stream()
-                .filter(application -> {
-                    Integer remainingHours = application.getRemainingHours();
-                    if (remainingHours == null) {
-                        remainingHours = application.getCourseHours();
-                    }
-                    return remainingHours > 0; // 只显示还有剩余课时的课程
-                })
                 .map(application -> {
                     Map<String, Object> map = new HashMap<>();
                     Integer remainingHours = application.getRemainingHours();
@@ -282,12 +352,42 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
                         remainingHours = application.getCourseHours();
                     }
                     map.put("value", application.getId());
-                    map.put("label", application.getCourseName() + "（剩余" + remainingHours + "课时）");
+                    map.put("label", application.getCourseName() + "（总课时" + application.getCourseHours() + "）");
                     map.put("courseHours", application.getCourseHours());
                     map.put("remainingHours", remainingHours);
                     map.put("courseName", application.getCourseName());
                     return map;
                 }).collect(Collectors.toList());
+    }
+    
+    /**
+     * 获取教师在指定班级的可用课程列表（显示该班级的剩余课时）
+     */
+    public List<Map<String, Object>> getAvailableCoursesForClass(Long teacherId, Long classId, String academicYear) {
+        // 从JWT获取当前登录用户信息
+        User currentUser = userContextUtil.getCurrentUser();
+        if (currentUser == null) {
+            throw new RuntimeException("获取当前用户信息失败，请重新登录");
+        }
+        
+        // 使用JWT获取的用户ID
+        Long actualTeacherId = currentUser.getId();
+        
+        return classCourseHoursService.getAvailableCoursesForClass(actualTeacherId, classId, academicYear);
+    }
+
+    @Override
+    public List<Map<String, Object>> getTeacherClasses(Long teacherId) {
+        // 从JWT获取当前登录用户信息
+        User currentUser = userContextUtil.getCurrentUser();
+        if (currentUser == null) {
+            throw new RuntimeException("获取当前用户信息失败，请重新登录");
+        }
+        
+        // 使用JWT获取的用户ID
+        Long actualTeacherId = currentUser.getId();
+        
+        return teacherClassService.getTeacherClasses(actualTeacherId);
     }
 
     @Override

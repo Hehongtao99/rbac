@@ -27,15 +27,27 @@ export default {
     })
   },
 
+  // 获取某个班级某周的课程表 - 后端从JWT获取teacherId
+  getWeeklyScheduleByClass(academicYear, weekNumber, classId) {
+    return request.get(`${API_BASE_URL}/weekly/class`, {
+      params: { academicYear, weekNumber, classId }
+    })
+  },
+
+  // 获取教师分配的班级列表 - 后端从JWT获取teacherId
+  getTeacherClasses() {
+    return request.get(`${API_BASE_URL}/teacher-classes`)
+  },
+
   // 删除课程表中的课程
   removeCourseFromSchedule(scheduleId) {
     return request.delete(`${API_BASE_URL}/${scheduleId}`)
   },
 
   // 检查时间冲突 - 后端从JWT获取teacherId
-  checkTimeConflict(academicYear, weekNumber, dayOfWeek, timeSlot) {
+  checkTimeConflict(academicYear, weekNumber, dayOfWeek, timeSlot, classId) {
     return request.get(`${API_BASE_URL}/check-conflict`, {
-      params: { academicYear, weekNumber, dayOfWeek, timeSlot }
+      params: { academicYear, weekNumber, dayOfWeek, timeSlot, classId }
     })
   },
 
@@ -43,6 +55,13 @@ export default {
   getAvailableCourses(academicYear) {
     return request.get(`${API_BASE_URL}/available-courses`, {
       params: { academicYear }
+    })
+  },
+
+  // 获取指定班级的可用课程列表（显示该班级的剩余课时）- 后端从JWT获取teacherId
+  getAvailableCoursesForClass(academicYear, classId) {
+    return request.get(`${API_BASE_URL}/available-courses/class`, {
+      params: { academicYear, classId }
     })
   },
 

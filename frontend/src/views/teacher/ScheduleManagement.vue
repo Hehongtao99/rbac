@@ -5,11 +5,33 @@
         <div class="card-header">
           <span>课程表管理</span>
           <div class="header-controls">
-            <el-select v-model="filterForm.academicYear" placeholder="选择学年" @change="loadSchedule" style="width: 150px; margin-right: 10px;">
+            <el-button type="primary" @click="showQuickAdd = true">快速添加</el-button>
+          </div>
+        </div>
+      </template>
+
+      <!-- 筛选条件 -->
+      <div class="filter-section">
+        <el-form :model="filterForm" inline>
+          <el-form-item label="学年">
+            <el-select v-model="filterForm.academicYear" placeholder="选择学年" @change="loadSchedule" style="width: 150px;">
               <el-option label="2024-2025" value="2024-2025"></el-option>
               <el-option label="2023-2024" value="2023-2024"></el-option>
             </el-select>
-            <el-select v-model="filterForm.weekNumber" placeholder="选择周次" @change="loadWeeklySchedule" style="width: 120px; margin-right: 10px;">
+          </el-form-item>
+          <el-form-item label="班级">
+            <el-select v-model="filterForm.classId" placeholder="选择班级" @change="loadSchedule" clearable style="width: 200px;">
+              <el-option label="所有班级" :value="null"></el-option>
+              <el-option 
+                v-for="clazz in teacherClasses" 
+                :key="clazz.id"
+                :label="clazz.name" 
+                :value="clazz.id">
+              </el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="周次">
+            <el-select v-model="filterForm.weekNumber" placeholder="选择周次" @change="loadSchedule" style="width: 120px;">
               <el-option 
                 v-for="week in 20" 
                 :key="week" 
@@ -17,12 +39,11 @@
                 :value="week">
               </el-option>
             </el-select>
-            <el-button type="primary" @click="showQuickAdd = true">快速添加</el-button>
-          </div>
-        </div>
-      </template>
+          </el-form-item>
+        </el-form>
+      </div>
 
-      <!-- 网格状课程表 -->
+      <!-- 课程表网格 -->
       <div class="schedule-grid-container" v-if="filterForm.weekNumber">
         <div class="schedule-grid">
           <!-- 表头 -->
@@ -61,6 +82,7 @@
                 <div class="course-name">{{ getCellCourse(timeSlot.timeSlot, day.value).courseName }}</div>
                 <div class="course-time">{{ getDetailedTimeDisplay(timeSlot.timeSlot) }}</div>
                 <div class="course-teacher">{{ getCellCourse(timeSlot.timeSlot, day.value).teacherName }}</div>
+                <div v-if="getCellCourse(timeSlot.timeSlot, day.value).className" class="course-class">{{ getCellCourse(timeSlot.timeSlot, day.value).className }}</div>
                 <div class="course-actions">
                   <el-button type="text" size="small" @click.stop="editCourse(getCellCourse(timeSlot.timeSlot, day.value))">
                     <el-icon><Edit /></el-icon>
@@ -104,6 +126,16 @@
             共找到 {{ availableCourses.length }} 门可选课程
           </div>
         </el-form-item>
+        <el-form-item label="班级" prop="classId">
+          <el-select v-model="addForm.classId" placeholder="请选择班级" style="width: 100%" @change="onClassChange">
+            <el-option 
+              v-for="clazz in teacherClasses" 
+              :key="clazz.id"
+              :label="clazz.name" 
+              :value="clazz.id">
+            </el-option>
+          </el-select>
+        </el-form-item>
         <el-form-item label="星期">
           <el-input :value="getDayName(addForm.dayOfWeek)" readonly />
         </el-form-item>
@@ -137,6 +169,16 @@
           <div style="margin-top: 5px; font-size: 12px; color: #999;">
             共找到 {{ availableCourses.length }} 门可选课程
           </div>
+        </el-form-item>
+        <el-form-item label="班级" prop="classId">
+          <el-select v-model="quickAddForm.classId" placeholder="请选择班级" style="width: 100%" @change="onQuickAddClassChange">
+            <el-option 
+              v-for="clazz in teacherClasses" 
+              :key="clazz.id"
+              :label="clazz.name" 
+              :value="clazz.id">
+            </el-option>
+          </el-select>
         </el-form-item>
         <el-form-item label="周次" prop="weekNumbers">
           <el-select v-model="quickAddForm.weekNumbers" multiple placeholder="请选择周次" style="width: 100%">
@@ -189,6 +231,9 @@
         <el-form-item label="教师">
           <el-input v-model="editCourseForm.teacherName" readonly></el-input>
         </el-form-item>
+        <el-form-item label="班级" v-if="editCourseForm.className">
+          <el-input v-model="editCourseForm.className" readonly></el-input>
+        </el-form-item>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
@@ -214,10 +259,12 @@ export default {
       addLoading: false,
       filterForm: {
         academicYear: '2024-2025',
-        weekNumber: null
+        weekNumber: null,
+        classId: null
       },
       quickAddForm: {
         courseId: null,
+        classId: null,
         weekNumbers: [],
         dayOfWeek: null,
         timeSlot: null
@@ -226,21 +273,25 @@ export default {
         id: null,
         courseName: '',
         timeSlot: null,
-        teacherName: ''
+        teacherName: '',
+        className: ''
       },
       addForm: {
         courseId: null,
+        classId: null,
         dayOfWeek: null,
         timeSlot: null
       },
       quickAddRules: {
         courseId: [{ required: true, message: '请选择课程', trigger: 'change' }],
+        classId: [{ required: true, message: '请选择班级', trigger: 'change' }],
         weekNumbers: [{ required: true, message: '请选择周次', trigger: 'change' }],
         dayOfWeek: [{ required: true, message: '请选择星期', trigger: 'change' }],
         timeSlot: [{ required: true, message: '请选择时间段', trigger: 'change' }]
       },
       addRules: {
-        courseId: [{ required: true, message: '请选择课程', trigger: 'change' }]
+        courseId: [{ required: true, message: '请选择课程', trigger: 'change' }],
+        classId: [{ required: true, message: '请选择班级', trigger: 'change' }]
       },
       weekDays: [
         { label: '周一', value: 1 },
@@ -252,247 +303,262 @@ export default {
         { label: '周日', value: 7 }
       ],
       timeSlots: [],
-      weeklyScheduleData: {},
-      availableCourses: []
-    }
-  },
-  computed: {
-    currentUser() {
-      return JSON.parse(localStorage.getItem('user') || '{}')
+      scheduleData: {},
+      availableCourses: [],
+      teacherClasses: []
     }
   },
   created() {
-    // 添加调试信息
-    console.log('=== ScheduleManagement 页面加载 ===')
-    const token = localStorage.getItem('token')
-    const userInfo = localStorage.getItem('userInfo')
-    console.log('localStorage中的token:', token ? `${token.substring(0, 20)}...` : 'null')
-    console.log('localStorage中的userInfo:', userInfo)
-    
     this.loadTimeSlots()
+    this.loadTeacherClasses()
     this.loadAvailableCourses()
-    // 默认选择第1周
-    this.filterForm.weekNumber = 1
-    this.loadWeeklySchedule()
   },
   methods: {
     async loadTimeSlots() {
       try {
-        console.log('=== loadTimeSlots 开始 ===')
         const response = await scheduleApi.getAllTimeSlots()
-        console.log('=== loadTimeSlots 响应 ===')
-        console.log('完整响应:', response)
         if (response.code === 200) {
           this.timeSlots = response.data || []
-          console.log('设置 timeSlots:', this.timeSlots)
-        } else {
-          console.log('时间段响应code不是200:', response.code, response.message)
         }
       } catch (error) {
-        console.error('=== loadTimeSlots 异常 ===')
-        console.error('异常详情:', error)
-        console.error('异常响应:', error.response)
+        console.error('获取时间段失败:', error)
       }
     },
 
-    async loadAvailableCourses() {
+    async loadTeacherClasses() {
       try {
-        console.log('=== loadAvailableCourses 开始 ===')
-        console.log('参数 academicYear:', this.filterForm.academicYear)
-        const response = await scheduleApi.getAvailableCourses(this.filterForm.academicYear)
-        console.log('=== loadAvailableCourses 响应 ===')
-        console.log('完整响应:', response)
+        const response = await scheduleApi.getTeacherClasses()
+        if (response.code === 200) {
+          this.teacherClasses = response.data || []
+          console.log('教师班级列表:', this.teacherClasses)
+        }
+      } catch (error) {
+        console.error('获取教师班级失败:', error)
+        ElMessage.error('获取班级列表失败')
+      }
+    },
+
+    async loadAvailableCourses(classId = null) {
+      try {
+        let response
+        if (classId) {
+          // 如果指定了班级，获取该班级的可用课程（显示该班级的剩余课时）
+          response = await scheduleApi.getAvailableCoursesForClass(this.filterForm.academicYear, classId)
+        } else {
+          // 否则获取所有可用课程（显示总课时）
+          response = await scheduleApi.getAvailableCourses(this.filterForm.academicYear)
+        }
+        
         if (response.code === 200) {
           this.availableCourses = response.data || []
-          console.log('设置 availableCourses:', this.availableCourses)
-        } else {
-          console.log('响应code不是200:', response.code, response.message)
         }
       } catch (error) {
-        console.error('=== loadAvailableCourses 异常 ===')
-        console.error('异常详情:', error)
-        console.error('异常响应:', error.response)
+        console.error('获取可选课程失败:', error)
       }
     },
 
-    async loadWeeklySchedule() {
+    async loadSchedule() {
       if (!this.filterForm.weekNumber) return
       
       try {
-        console.log('=== loadWeeklySchedule 开始 ===')
-        const response = await scheduleApi.getWeeklySchedule(
+        const response = await scheduleApi.getWeeklyScheduleByClass(
           this.filterForm.academicYear, 
-          this.filterForm.weekNumber
+          this.filterForm.weekNumber,
+          this.filterForm.classId
         )
-        console.log('=== loadWeeklySchedule 响应 ===')
-        console.log('完整响应:', response)
         if (response.code === 200) {
-          this.weeklyScheduleData = response.data || {}
-          console.log('设置 weeklyScheduleData:', this.weeklyScheduleData)
-        } else {
-          console.log('周课程表响应code不是200:', response.code, response.message)
+          this.scheduleData = response.data || {}
         }
       } catch (error) {
-        console.error('=== loadWeeklySchedule 异常 ===')
-        console.error('异常详情:', error)
-        console.error('异常响应:', error.response)
+        console.error('获取课程表失败:', error)
+        ElMessage.error('获取课程表失败')
       }
-    },
-
-    loadSchedule() {
-      this.loadAvailableCourses()
-      this.loadWeeklySchedule()
     },
 
     getCellCourse(timeSlot, dayOfWeek) {
       const dayName = this.weekDays.find(d => d.value === dayOfWeek)?.label
-      const daySchedules = this.weeklyScheduleData[dayName] || []
+      const daySchedules = this.scheduleData[dayName] || []
       return daySchedules.find(s => s.timeSlot === timeSlot)
     },
 
     handleCellClick(timeSlot, dayOfWeek) {
-      // 如果这个格子没有课程，弹出添加对话框
-      if (!this.getCellCourse(timeSlot, dayOfWeek)) {
-        this.addForm = {
-          courseId: null,
-          dayOfWeek: dayOfWeek,
-          timeSlot: timeSlot
-        }
+      if (this.teacherClasses.length === 0) {
+        ElMessage.warning('您还没有分配到任何班级，无法添加课程')
+        return
+      }
+      
+      const existingCourse = this.getCellCourse(timeSlot, dayOfWeek)
+      if (existingCourse) {
+        this.editCourse(existingCourse)
+      } else {
+        this.addForm.dayOfWeek = dayOfWeek
+        this.addForm.timeSlot = timeSlot
+        this.addForm.courseId = null
+        this.addForm.classId = this.filterForm.classId || null
         this.showAddDialog = true
+        
+        // 当打开添加对话框时，如果已选择班级，则加载该班级的可用课程
+        if (this.addForm.classId) {
+          this.loadAvailableCourses(this.addForm.classId)
+        }
       }
     },
 
     async addSingleCourse() {
+      if (!this.$refs.addFormRef) return
+      
       try {
         await this.$refs.addFormRef.validate()
+        
         this.addLoading = true
-
-        const scheduleData = {
+        
+        const selectedClass = this.teacherClasses.find(c => c.id === this.addForm.classId)
+        const selectedCourse = this.availableCourses.find(c => c.value === this.addForm.courseId)
+        
+        const data = {
           courseId: this.addForm.courseId,
+          courseName: selectedCourse?.courseName || '',
+          classId: this.addForm.classId,
+          className: selectedClass?.name || '',
+          academicYear: this.filterForm.academicYear,
           weekNumber: this.filterForm.weekNumber,
           dayOfWeek: this.addForm.dayOfWeek,
           timeSlot: this.addForm.timeSlot,
-          academicYear: this.filterForm.academicYear
+          reducedHours: 1
         }
-
-        // 检查时间冲突
-        const conflictResponse = await scheduleApi.checkTimeConflict(
-          this.filterForm.academicYear,
-          this.filterForm.weekNumber,
-          this.addForm.dayOfWeek,
-          this.addForm.timeSlot
-        )
         
-        if (conflictResponse.data) {
-          ElMessage.warning('该时间段已有课程安排')
-          return
-        }
-
-        const response = await scheduleApi.addCourseToSchedule(scheduleData)
+        const response = await scheduleApi.addCourseToSchedule(data)
         if (response.code === 200) {
-          ElMessage.success('添加成功')
+          ElMessage.success('添加课程成功')
           this.showAddDialog = false
-          this.loadWeeklySchedule()
-          this.loadAvailableCourses()
+          this.loadSchedule()
+          // 重新加载当前班级的可用课程
+          if (this.filterForm.classId) {
+            this.loadAvailableCourses(this.filterForm.classId)
+          } else {
+            this.loadAvailableCourses()
+          }
+        } else {
+          ElMessage.error(response.message || '添加课程失败')
         }
       } catch (error) {
         console.error('添加课程失败:', error)
-        ElMessage.error(error.response?.data?.msg || '添加失败')
+        ElMessage.error(error.message || '添加课程失败')
       } finally {
         this.addLoading = false
       }
     },
 
     async quickAddCourse() {
+      if (!this.$refs.quickAddFormRef) return
+      
       try {
         await this.$refs.quickAddFormRef.validate()
+        
         this.quickAddLoading = true
-
-        // 批量添加到多个周次
+        
+        const selectedClass = this.teacherClasses.find(c => c.id === this.quickAddForm.classId)
+        const selectedCourse = this.availableCourses.find(c => c.value === this.quickAddForm.courseId)
+        
         const promises = this.quickAddForm.weekNumbers.map(weekNumber => {
-          const scheduleData = {
+          const data = {
             courseId: this.quickAddForm.courseId,
+            courseName: selectedCourse?.courseName || '',
+            classId: this.quickAddForm.classId,
+            className: selectedClass?.name || '',
+            academicYear: this.filterForm.academicYear,
             weekNumber: weekNumber,
             dayOfWeek: this.quickAddForm.dayOfWeek,
             timeSlot: this.quickAddForm.timeSlot,
-            academicYear: this.filterForm.academicYear
+            reducedHours: 1
           }
-          return scheduleApi.addCourseToSchedule(scheduleData)
+          return scheduleApi.addCourseToSchedule(data)
         })
-
+        
         await Promise.all(promises)
-        ElMessage.success(`成功添加${this.quickAddForm.weekNumbers.length}个周次的课程`)
+        
+        ElMessage.success(`成功添加 ${this.quickAddForm.weekNumbers.length} 个课程`)
         this.showQuickAdd = false
-        this.resetQuickAddForm()
-        this.loadWeeklySchedule()
-        this.loadAvailableCourses()
+        this.loadSchedule()
+        // 重新加载当前班级的可用课程
+        if (this.filterForm.classId) {
+          this.loadAvailableCourses(this.filterForm.classId)
+        } else {
+          this.loadAvailableCourses()
+        }
+        
       } catch (error) {
         console.error('批量添加课程失败:', error)
-        ElMessage.error('批量添加失败')
+        ElMessage.error(error.message || '批量添加课程失败')
       } finally {
         this.quickAddLoading = false
       }
     },
 
-    editCourse(schedule) {
-      this.editCourseForm = {
-        id: schedule.id,
-        courseName: schedule.courseName,
-        timeSlot: schedule.timeSlot,
-        teacherName: schedule.teacherName
-      }
+    editCourse(course) {
+      this.editCourseForm = { ...course }
       this.showEditDialog = true
     },
 
-    async removeCourse(schedule) {
+    async removeCourse(course) {
       try {
-        await ElMessageBox.confirm('确定要删除这门课程安排吗？', '提示', {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
+        await ElMessageBox.confirm('确定要删除这个课程吗？', '确认删除', {
           type: 'warning'
         })
-
-        const response = await scheduleApi.removeCourseFromSchedule(schedule.id)
+        
+        const response = await scheduleApi.removeCourseFromSchedule(course.id)
         if (response.code === 200) {
-          ElMessage.success('删除成功')
-          this.loadWeeklySchedule()
-          this.loadAvailableCourses()
+          ElMessage.success('删除课程成功')
+          this.loadSchedule()
+          // 重新加载当前班级的可用课程
+          if (this.filterForm.classId) {
+            this.loadAvailableCourses(this.filterForm.classId)
+          } else {
+            this.loadAvailableCourses()
+          }
+        } else {
+          ElMessage.error(response.message || '删除课程失败')
         }
       } catch (error) {
         if (error !== 'cancel') {
           console.error('删除课程失败:', error)
-          ElMessage.error('删除失败')
+          ElMessage.error('删除课程失败')
         }
       }
     },
 
-    resetQuickAddForm() {
-      this.quickAddForm = {
-        courseId: null,
-        weekNumbers: [],
-        dayOfWeek: null,
-        timeSlot: null
+    onClassChange() {
+      const selectedClass = this.teacherClasses.find(c => c.id === this.addForm.classId)
+      if (selectedClass) {
+        this.addForm.className = selectedClass.name
+      }
+      
+      // 重置课程选择
+      this.addForm.courseId = null
+      
+      // 重新加载该班级的可用课程
+      if (this.addForm.classId) {
+        this.loadAvailableCourses(this.addForm.classId)
+      } else {
+        this.loadAvailableCourses()
       }
     },
 
-    getTimeSlotDisplay(timeSlot) {
-      const timeSlotObj = this.timeSlots.find(s => s.timeSlot === timeSlot)
-      return timeSlotObj ? `${timeSlotObj.slotName} (${timeSlotObj.startTime}-${timeSlotObj.endTime})` : ''
-    },
-
-    getDetailedTimeDisplay(timeSlot) {
-      const timeSlotObj = this.timeSlots.find(s => s.timeSlot === timeSlot)
-      if (!timeSlotObj) return ''
+    onQuickAddClassChange() {
+      const selectedClass = this.teacherClasses.find(c => c.id === this.quickAddForm.classId)
+      if (selectedClass) {
+        this.quickAddForm.className = selectedClass.name
+      }
       
-      // 显示详细的小节时间，比如 8:00-8:45, 8:55-9:40
-      const [startHour, startMin] = timeSlotObj.startTime.split(':').map(Number)
-      const [endHour, endMin] = timeSlotObj.endTime.split(':').map(Number)
+      // 重置课程选择
+      this.quickAddForm.courseId = null
       
-      // 计算中间休息时间
-      const firstEnd = `${startHour}:${(startMin + 45).toString().padStart(2, '0')}`
-      const secondStart = `${startHour}:${(startMin + 55).toString().padStart(2, '0')}`
-      
-      return `${timeSlotObj.startTime}-${firstEnd}, ${secondStart}-${timeSlotObj.endTime}`
+      // 重新加载该班级的可用课程
+      if (this.quickAddForm.classId) {
+        this.loadAvailableCourses(this.quickAddForm.classId)
+      } else {
+        this.loadAvailableCourses()
+      }
     },
 
     getDayName(dayOfWeek) {
@@ -501,8 +567,18 @@ export default {
     },
 
     getTimeSlotName(timeSlot) {
-      const timeSlotObj = this.timeSlots.find(s => s.timeSlot === timeSlot)
-      return timeSlotObj ? `${timeSlotObj.slotName} (${timeSlotObj.startTime}-${timeSlotObj.endTime})` : ''
+      const slot = this.timeSlots.find(s => s.timeSlot === timeSlot)
+      return slot ? `${slot.slotName} (${slot.startTime}-${slot.endTime})` : ''
+    },
+
+    getDetailedTimeDisplay(timeSlot) {
+      const slot = this.timeSlots.find(s => s.timeSlot === timeSlot)
+      return slot ? `${slot.startTime}-${slot.endTime}` : ''
+    },
+
+    getTimeSlotDisplay(timeSlot) {
+      const slot = this.timeSlots.find(s => s.timeSlot === timeSlot)
+      return slot ? `第${timeSlot}节 ${slot.startTime}-${slot.endTime}` : `第${timeSlot}节`
     }
   }
 }
@@ -519,13 +595,14 @@ export default {
   align-items: center;
 }
 
-.header-controls {
-  display: flex;
-  align-items: center;
+.filter-section {
+  margin-bottom: 20px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 6px;
 }
 
 .schedule-grid-container {
-  margin-top: 20px;
   overflow-x: auto;
 }
 
@@ -558,10 +635,6 @@ export default {
   border-bottom: 1px solid #e4e7ed;
 }
 
-.grid-row:last-child {
-  border-bottom: none;
-}
-
 .time-cell {
   padding: 15px 10px;
   background: #fafbfc;
@@ -585,93 +658,76 @@ export default {
 }
 
 .time-period {
-  font-size: 11px;
+  font-size: 10px;
   color: #c0c4cc;
-  padding: 2px 6px;
-  background: #f0f0f0;
-  border-radius: 10px;
-  align-self: center;
 }
 
 .course-cell {
   position: relative;
-  min-height: 90px;
+  min-height: 120px;
   border-right: 1px solid #e4e7ed;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
 }
 
 .course-cell:hover {
-  background: #f0f9ff;
+  background-color: #f0f9ff;
 }
 
 .course-cell.has-course {
-  background: #e1f5fe;
-}
-
-.course-cell.has-course:hover {
-  background: #bbdefb;
+  background-color: #e3f2fd;
 }
 
 .course-content {
-  width: 100%;
-  text-align: center;
-  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .course-name {
   font-weight: bold;
   color: #1976d2;
-  margin-bottom: 4px;
   font-size: 13px;
+  margin-bottom: 4px;
 }
 
 .course-time {
-  font-size: 10px;
+  font-size: 11px;
   color: #666;
-  margin-bottom: 4px;
-  line-height: 1.2;
+  margin-bottom: 2px;
 }
 
 .course-teacher {
   font-size: 11px;
-  color: #888;
-  margin-bottom: 6px;
+  color: #666;
+  margin-bottom: 2px;
+}
+
+.course-class {
+  font-size: 10px;
+  color: #999;
+  margin-bottom: 4px;
 }
 
 .course-actions {
   display: flex;
-  justify-content: center;
-  gap: 5px;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.course-cell:hover .course-actions {
-  opacity: 1;
+  gap: 4px;
+  margin-top: auto;
 }
 
 .empty-content {
-  width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #c0c4cc;
+  font-size: 12px;
 }
 
 .add-hint {
-  color: #c0c4cc;
-  font-size: 12px;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.course-cell:hover .add-hint {
-  opacity: 1;
+  text-align: center;
 }
 
 .no-week-selected {
@@ -679,42 +735,9 @@ export default {
   padding: 40px;
 }
 
-/* 响应式设计 */
 @media (max-width: 1200px) {
   .schedule-grid {
     min-width: 1000px;
-  }
-  
-  .grid-row {
-    grid-template-columns: 120px repeat(7, 1fr);
-  }
-  
-  .grid-header {
-    grid-template-columns: 120px repeat(7, 1fr);
-  }
-}
-
-@media (max-width: 768px) {
-  .schedule-grid-container {
-    margin-left: -20px;
-    margin-right: -20px;
-  }
-  
-  .schedule-grid {
-    min-width: 800px;
-  }
-  
-  .course-cell {
-    min-height: 70px;
-    font-size: 11px;
-  }
-  
-  .time-cell {
-    padding: 10px 5px;
-  }
-  
-  .course-time {
-    font-size: 9px;
   }
 }
 </style> 

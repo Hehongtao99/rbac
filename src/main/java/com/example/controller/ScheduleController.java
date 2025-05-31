@@ -5,6 +5,7 @@ import com.example.dto.ScheduleDTO;
 import com.example.entity.TimeSlotConfig;
 import com.example.service.ScheduleService;
 import com.example.service.TimeSlotConfigService;
+import com.example.service.impl.ScheduleServiceImpl;
 import com.example.vo.ScheduleVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -61,6 +62,31 @@ public class ScheduleController {
     }
 
     /**
+     * 获取某个班级某周的课程表 - 从JWT获取teacherId
+     */
+    @GetMapping("/weekly/class")
+    public Result<Map<String, List<ScheduleVO>>> getWeeklyScheduleByClass(
+            @RequestParam String academicYear, 
+            @RequestParam Integer weekNumber,
+            @RequestParam(required = false) Long classId) {
+        Map<String, List<ScheduleVO>> schedule = scheduleService.getWeeklyScheduleByClass(null, academicYear, weekNumber, classId);
+        return Result.success(schedule);
+    }
+
+    /**
+     * 获取教师分配的班级列表 - 从JWT获取teacherId
+     */
+    @GetMapping("/teacher-classes")
+    public Result<List<Map<String, Object>>> getTeacherClasses() {
+        try {
+            List<Map<String, Object>> classes = scheduleService.getTeacherClasses(null);
+            return Result.success(classes);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
      * 管理员获取所有教师的课程表
      */
     @GetMapping("/admin/all")
@@ -101,9 +127,10 @@ public class ScheduleController {
     public Result<Boolean> checkTimeConflict(@RequestParam String academicYear,
                                            @RequestParam Integer weekNumber,
                                            @RequestParam Integer dayOfWeek,
-                                           @RequestParam Integer timeSlot) {
+                                           @RequestParam Integer timeSlot,
+                                           @RequestParam(required = false) Long classId) {
         try {
-            boolean conflict = scheduleService.checkTimeConflict(null, academicYear, weekNumber, dayOfWeek, timeSlot);
+            boolean conflict = scheduleService.checkTimeConflict(null, academicYear, weekNumber, dayOfWeek, timeSlot, classId);
             return Result.success(conflict);
         } catch (Exception e) {
             return Result.error(e.getMessage());
@@ -117,6 +144,22 @@ public class ScheduleController {
     public Result<List<Map<String, Object>>> getAvailableCourses(@RequestParam String academicYear) {
         try {
             List<Map<String, Object>> courses = scheduleService.getAvailableCourses(null, academicYear);
+            return Result.success(courses);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 获取指定班级的可用课程列表（显示该班级的剩余课时）- 从JWT获取teacherId
+     */
+    @GetMapping("/available-courses/class")
+    public Result<List<Map<String, Object>>> getAvailableCoursesForClass(
+            @RequestParam String academicYear,
+            @RequestParam Long classId) {
+        try {
+            ScheduleServiceImpl scheduleServiceImpl = (ScheduleServiceImpl) scheduleService;
+            List<Map<String, Object>> courses = scheduleServiceImpl.getAvailableCoursesForClass(null, classId, academicYear);
             return Result.success(courses);
         } catch (Exception e) {
             return Result.error(e.getMessage());

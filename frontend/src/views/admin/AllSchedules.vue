@@ -14,13 +14,13 @@
       <div class="filter-section">
         <el-form :model="filterForm" inline>
           <el-form-item label="学年">
-            <el-select v-model="filterForm.academicYear" placeholder="选择学年" @change="handleFilterChange">
+            <el-select v-model="filterForm.academicYear" placeholder="选择学年" @change="handleFilterChange" style="width: 150px;">
               <el-option label="2024-2025" value="2024-2025"></el-option>
               <el-option label="2023-2024" value="2023-2024"></el-option>
             </el-select>
           </el-form-item>
           <el-form-item label="周次">
-            <el-select v-model="gridWeekNumber" placeholder="选择周次" @change="loadWeeklyGrid">
+            <el-select v-model="gridWeekNumber" placeholder="选择周次" @change="loadWeeklyGrid" style="width: 120px;">
               <el-option 
                 v-for="week in 20" 
                 :key="week" 
@@ -30,7 +30,7 @@
             </el-select>
           </el-form-item>
           <el-form-item label="教师筛选">
-            <el-select v-model="gridTeacherId" placeholder="选择教师" @change="loadWeeklyGrid" clearable>
+            <el-select v-model="gridTeacherId" placeholder="选择教师" @change="loadWeeklyGrid" clearable style="width: 180px;">
               <el-option label="所有教师" :value="null"></el-option>
               <el-option 
                 v-for="teacher in teacherList" 
@@ -45,7 +45,8 @@
               v-model="filterForm.teacherName" 
               placeholder="教师姓名" 
               @input="debounceSearch"
-              clearable>
+              clearable
+              style="width: 150px;">
             </el-input>
           </el-form-item>
           <el-form-item v-if="viewMode === 'list'" label="课程">
@@ -53,7 +54,8 @@
               v-model="filterForm.courseName" 
               placeholder="课程名称" 
               @input="debounceSearch"
-              clearable>
+              clearable
+              style="width: 150px;">
             </el-input>
           </el-form-item>
           <el-form-item v-if="viewMode === 'list'">
@@ -89,10 +91,10 @@
             </template>
           </el-table-column>
           <el-table-column prop="timeRange" label="时间" width="120"></el-table-column>
-          <el-table-column prop="courseName" label="课程名称" min-width="150"></el-table-column>
-          <el-table-column prop="teacherName" label="教师" width="120"></el-table-column>
-          <el-table-column prop="classroom" label="教室" width="100"></el-table-column>
-          <el-table-column label="操作" width="120" fixed="right">
+          <el-table-column prop="courseName" label="课程名称" width="150"></el-table-column>
+          <el-table-column prop="teacherName" label="教师" width="100"></el-table-column>
+          <el-table-column prop="className" label="班级" width="120"></el-table-column>
+          <el-table-column label="操作" width="100">
             <template #default="{ row }">
               <el-button type="text" size="small" @click="viewDetail(row)">
                 详情
@@ -142,7 +144,7 @@
                   @click="viewDetail(course)">
                   <div class="course-name">{{ course.courseName }}</div>
                   <div class="course-teacher">{{ course.teacherName }}</div>
-                  <div class="course-classroom">{{ course.classroom }}</div>
+                  <div v-if="course.className" class="course-class">{{ course.className }}</div>
                 </div>
 
                 <div v-if="getCellCourses(timeSlot.timeSlot, day.value).length === 0" class="empty-cell">
@@ -164,9 +166,9 @@
           <el-descriptions-item label="学年">{{ selectedSchedule.academicYear }}</el-descriptions-item>
           <el-descriptions-item label="周次">第{{ selectedSchedule.weekNumber }}周</el-descriptions-item>
           <el-descriptions-item label="星期">{{ selectedSchedule.dayOfWeekName }}</el-descriptions-item>
-          <el-descriptions-item label="时间段">第{{ selectedSchedule.timeSlot }}节</el-descriptions-item>
-          <el-descriptions-item label="时间">{{ selectedSchedule.timeRange }}</el-descriptions-item>
-          <el-descriptions-item label="教室">{{ selectedSchedule.classroom }}</el-descriptions-item>
+          <el-descriptions-item label="时间段">{{ selectedSchedule.timeRange }}</el-descriptions-item>
+          <el-descriptions-item label="班级" v-if="selectedSchedule.className">{{ selectedSchedule.className }}</el-descriptions-item>
+          <el-descriptions-item label="课时">{{ selectedSchedule.reducedHours }}课时</el-descriptions-item>
         </el-descriptions>
       </div>
       <template #footer>
@@ -477,9 +479,10 @@ export default {
   margin-bottom: 2px;
 }
 
-.course-classroom {
-  font-size: 10px;
-  color: #999;
+.course-class {
+  font-size: 11px;
+  color: #666;
+  margin-bottom: 2px;
 }
 
 .empty-cell {
