@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.RoleMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.example.entity.Role">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="role_name" property="roleName" jdbcType="VARCHAR"/>
+        <result column="role_code" property="roleCode" jdbcType="VARCHAR"/>
+        <result column="description" property="description" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, role_name, role_code, description, status, create_time, update_time, deleted
+    </sql>
+
+    <!-- 插入 -->
+    <insert id="insert" parameterType="com.example.entity.Role" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_role (role_name, role_code, description, status, create_time, update_time, deleted)
+        VALUES (#{roleName}, #{roleCode}, #{description}, #{status}, #{createTime}, #{updateTime}, #{deleted})
+    </insert>
+
+    <!-- 根据ID删除 -->
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM sys_role WHERE id = #{id}
+    </delete>
+
+    <!-- 根据ID更新 -->
+    <update id="updateById" parameterType="com.example.entity.Role">
+        UPDATE sys_role
+        <set>
+            <if test="roleName != null">role_name = #{roleName},</if>
+            <if test="roleCode != null">role_code = #{roleCode},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_role
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!-- 条件查询列表 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_role
+        <where>
+            deleted = 0
+            <if test="role.roleName != null and role.roleName != ''">
+                AND role_name = #{role.roleName}
+            </if>
+            <if test="role.roleCode != null and role.roleCode != ''">
+                AND role_code = #{role.roleCode}
+            </if>
+            <if test="role.status != null">
+                AND status = #{role.status}
+            </if>
+        </where>
+        ORDER BY id ASC
+    </select>
+
+    <!-- 根据角色编码查询 -->
+    <select id="selectByRoleCode" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_role
+        WHERE role_code = #{roleCode} AND deleted = 0
+    </select>
+
+    <!-- 根据ID列表查询 -->
+    <select id="selectByIds" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_role
+        WHERE deleted = 0 AND id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <!-- 根据状态查询 -->
+    <select id="selectByStatus" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_role
+        WHERE status = #{status} AND deleted = 0
+        ORDER BY id ASC
+    </select>
+
+    <!-- 根据角色名称查询 -->
+    <select id="selectByRoleName" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_role
+        WHERE role_name = #{roleName} AND deleted = 0
+    </select>
+
+    <!-- 根据角色名称查询（排除指定ID） -->
+    <select id="selectByRoleNameExcludeId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_role
+        WHERE role_name = #{roleName} AND id != #{excludeId} AND deleted = 0
+    </select>
+
+    <!-- 根据角色编码查询（排除指定ID） -->
+    <select id="selectByRoleCodeExcludeId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_role
+        WHERE role_code = #{roleCode} AND id != #{excludeId} AND deleted = 0
+    </select>
+
+    <!-- 统计总数 -->
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_role
+        <where>
+            deleted = 0
+            <if test="role.roleName != null and role.roleName != ''">
+                AND role_name LIKE CONCAT('%', #{role.roleName}, '%')
+            </if>
+            <if test="role.roleCode != null and role.roleCode != ''">
+                AND role_code = #{role.roleCode}
+            </if>
+            <if test="role.status != null">
+                AND status = #{role.status}
+            </if>
+        </where>
+    </select>
+
+</mapper> 

@@ -1,14 +1,10 @@
 package com.example.entity;
 
-import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
-
 import java.time.LocalDateTime;
 
 @Data
-@TableName("sys_time_slot_config")
 public class TimeSlotConfig {
-    @TableId(type = IdType.AUTO)
     private Long id;
     
     private Integer timeSlot;    // 时间段 (1-6)
@@ -23,12 +19,9 @@ public class TimeSlotConfig {
     
     private String description;  // 描述
     
-    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
     
-    @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
     
-    @TableLogic
     private Integer deleted;
 } 

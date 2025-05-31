@@ -5,7 +5,6 @@ import com.example.dto.ScheduleDTO;
 import com.example.entity.TimeSlotConfig;
 import com.example.service.ScheduleService;
 import com.example.service.TimeSlotConfigService;
-import com.example.service.impl.ScheduleServiceImpl;
 import com.example.vo.ScheduleVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -158,8 +157,7 @@ public class ScheduleController {
             @RequestParam String academicYear,
             @RequestParam Long classId) {
         try {
-            ScheduleServiceImpl scheduleServiceImpl = (ScheduleServiceImpl) scheduleService;
-            List<Map<String, Object>> courses = scheduleServiceImpl.getAvailableCoursesForClass(null, classId, academicYear);
+            List<Map<String, Object>> courses = scheduleService.getAvailableCoursesForClass(null, classId, academicYear);
             return Result.success(courses);
         } catch (Exception e) {
             return Result.error(e.getMessage());

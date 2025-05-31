@@ -1,6 +1,5 @@
 package com.example.util;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.entity.User;
 import com.example.mapper.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,9 +65,7 @@ public class UserContextUtil {
             }
             
             // 根据用户名查询用户信息
-            LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(User::getUsername, username);
-            User user = userMapper.selectOne(wrapper);
+            User user = userMapper.selectByUsername(username);
             
             if (user == null) {
                 System.err.println("UserContextUtil: User not found for username: " + username);

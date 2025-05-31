@@ -1,6 +1,5 @@
 package com.example.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.entity.Organization;
 import com.example.entity.UserOrganization;
 import com.example.mapper.OrganizationMapper;
@@ -26,9 +25,7 @@ public class TeacherClassServiceImpl implements TeacherClassService {
     @Override
     public List<Map<String, Object>> getTeacherClasses(Long teacherId) {
         // 获取教师分配的组织ID列表
-        LambdaQueryWrapper<UserOrganization> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(UserOrganization::getUserId, teacherId);
-        List<UserOrganization> userOrganizations = userOrganizationMapper.selectList(wrapper);
+        List<UserOrganization> userOrganizations = userOrganizationMapper.selectByUserId(teacherId);
         
         if (userOrganizations.isEmpty()) {
             return List.of();
@@ -40,12 +37,7 @@ public class TeacherClassServiceImpl implements TeacherClassService {
                 .collect(Collectors.toList());
         
         // 查询班级组织（orgLevel = 3）
-        LambdaQueryWrapper<Organization> orgWrapper = new LambdaQueryWrapper<>();
-        orgWrapper.in(Organization::getId, orgIds)
-                 .eq(Organization::getOrgLevel, 3)  // 班级级别
-                 .eq(Organization::getStatus, 1);   // 启用状态
-        
-        List<Organization> classes = organizationMapper.selectList(orgWrapper);
+        List<Organization> classes = organizationMapper.selectByIdsAndLevelAndStatus(orgIds, 3, 1);
         
         return classes.stream().map(clazz -> {
             Map<String, Object> map = new HashMap<>();

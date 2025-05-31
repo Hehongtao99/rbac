@@ -1,6 +1,6 @@
 package com.example.service;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.common.PageResult;
 import com.example.dto.NoticeDTO;
 import com.example.dto.NoticeQueryDTO;
 import com.example.vo.NoticeVO;
@@ -9,7 +9,7 @@ public interface NoticeService {
     /**
      * 分页查询通知列表
      */
-    Page<NoticeVO> getNoticeList(NoticeQueryDTO queryDTO);
+    PageResult<NoticeVO> getNoticeList(NoticeQueryDTO queryDTO);
     
     /**
      * 根据ID获取通知详情

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.TimeSlotConfigMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.example.entity.TimeSlotConfig">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="time_slot" property="timeSlot" jdbcType="INTEGER"/>
+        <result column="slot_name" property="slotName" jdbcType="VARCHAR"/>
+        <result column="start_time" property="startTime" jdbcType="VARCHAR"/>
+        <result column="end_time" property="endTime" jdbcType="VARCHAR"/>
+        <result column="period" property="period" jdbcType="VARCHAR"/>
+        <result column="description" property="description" jdbcType="VARCHAR"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, time_slot, slot_name, start_time, end_time, period, description, create_time, update_time, deleted
+    </sql>
+
+    <!-- 插入 -->
+    <insert id="insert" parameterType="com.example.entity.TimeSlotConfig" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_time_slot_config (time_slot, slot_name, start_time, end_time, period, description, create_time, update_time, deleted)
+        VALUES (#{timeSlot}, #{slotName}, #{startTime}, #{endTime}, #{period}, #{description}, #{createTime}, #{updateTime}, #{deleted})
+    </insert>
+
+    <!-- 根据ID删除 -->
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM sys_time_slot_config WHERE id = #{id}
+    </delete>
+
+    <!-- 根据ID更新 -->
+    <update id="updateById" parameterType="com.example.entity.TimeSlotConfig">
+        UPDATE sys_time_slot_config
+        <set>
+            <if test="timeSlot != null">time_slot = #{timeSlot},</if>
+            <if test="slotName != null">slot_name = #{slotName},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="period != null">period = #{period},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_time_slot_config
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!-- 条件查询列表 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_time_slot_config
+        <where>
+            deleted = 0
+            <if test="timeSlotConfig.timeSlot != null">
+                AND time_slot = #{timeSlotConfig.timeSlot}
+            </if>
+            <if test="timeSlotConfig.period != null and timeSlotConfig.period != ''">
+                AND period = #{timeSlotConfig.period}
+            </if>
+        </where>
+        ORDER BY time_slot ASC
+    </select>
+
+    <!-- 根据时间段查询 -->
+    <select id="selectByTimeSlot" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_time_slot_config
+        WHERE time_slot = #{timeSlot} AND deleted = 0
+    </select>
+
+    <!-- 根据时间段分类查询 -->
+    <select id="selectByPeriod" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_time_slot_config
+        WHERE period = #{period} AND deleted = 0
+        ORDER BY time_slot ASC
+    </select>
+
+    <!-- 统计总数 -->
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_time_slot_config
+        <where>
+            deleted = 0
+            <if test="timeSlotConfig.timeSlot != null">
+                AND time_slot = #{timeSlotConfig.timeSlot}
+            </if>
+            <if test="timeSlotConfig.period != null and timeSlotConfig.period != ''">
+                AND period = #{timeSlotConfig.period}
+            </if>
+        </where>
+    </select>
+
+</mapper> 

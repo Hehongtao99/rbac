@@ -1,7 +1,5 @@
 package com.example.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.entity.ClassCourseHours;
 import com.example.entity.CourseApplication;
 import com.example.mapper.ClassCourseHoursMapper;
@@ -11,14 +9,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
-public class ClassCourseHoursServiceImpl extends ServiceImpl<ClassCourseHoursMapper, ClassCourseHours> implements ClassCourseHoursService {
+public class ClassCourseHoursServiceImpl implements ClassCourseHoursService {
 
+    @Autowired
+    private ClassCourseHoursMapper classCourseHoursMapper;
+    
     @Autowired
     private CourseApplicationMapper courseApplicationMapper;
 
@@ -26,11 +28,12 @@ public class ClassCourseHoursServiceImpl extends ServiceImpl<ClassCourseHoursMap
     @Transactional
     public ClassCourseHours getOrCreateClassCourseHours(CourseApplication application, Long classId, String className) {
         // 先查询是否已存在
-        LambdaQueryWrapper<ClassCourseHours> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ClassCourseHours::getApplicationId, application.getId())
-               .eq(ClassCourseHours::getClassId, classId);
+        List<ClassCourseHours> existingList = classCourseHoursMapper.selectByApplicationId(application.getId());
+        ClassCourseHours existing = existingList.stream()
+                .filter(c -> c.getClassId().equals(classId))
+                .findFirst()
+                .orElse(null);
         
-        ClassCourseHours existing = this.getOne(wrapper);
         if (existing != null) {
             return existing;
         }
@@ -49,15 +52,18 @@ public class ClassCourseHoursServiceImpl extends ServiceImpl<ClassCourseHoursMap
         classCourseHours.setUsedHours(0);
         classCourseHours.setRemainingHours(application.getCourseHours());
         classCourseHours.setStatus(1);
+        classCourseHours.setCreateTime(LocalDateTime.now());
+        classCourseHours.setUpdateTime(LocalDateTime.now());
+        classCourseHours.setDeleted(0);
         
-        this.save(classCourseHours);
+        classCourseHoursMapper.insert(classCourseHours);
         return classCourseHours;
     }
 
     @Override
     @Transactional
     public boolean useHours(Long classCourseHoursId, Integer hours) {
-        ClassCourseHours classCourseHours = this.getById(classCourseHoursId);
+        ClassCourseHours classCourseHours = classCourseHoursMapper.selectById(classCourseHoursId);
         if (classCourseHours == null) {
             return false;
         }
@@ -68,14 +74,15 @@ public class ClassCourseHoursServiceImpl extends ServiceImpl<ClassCourseHoursMap
         
         classCourseHours.setUsedHours(classCourseHours.getUsedHours() + hours);
         classCourseHours.setRemainingHours(classCourseHours.getRemainingHours() - hours);
+        classCourseHours.setUpdateTime(LocalDateTime.now());
         
-        return this.updateById(classCourseHours);
+        return classCourseHoursMapper.updateById(classCourseHours) > 0;
     }
 
     @Override
     @Transactional
     public boolean restoreHours(Long classCourseHoursId, Integer hours) {
-        ClassCourseHours classCourseHours = this.getById(classCourseHoursId);
+        ClassCourseHours classCourseHours = classCourseHoursMapper.selectById(classCourseHoursId);
         if (classCourseHours == null) {
             return false;
         }
@@ -86,19 +93,15 @@ public class ClassCourseHoursServiceImpl extends ServiceImpl<ClassCourseHoursMap
         
         classCourseHours.setUsedHours(classCourseHours.getUsedHours() - hours);
         classCourseHours.setRemainingHours(classCourseHours.getRemainingHours() + hours);
+        classCourseHours.setUpdateTime(LocalDateTime.now());
         
-        return this.updateById(classCourseHours);
+        return classCourseHoursMapper.updateById(classCourseHours) > 0;
     }
 
     @Override
     public List<Map<String, Object>> getAvailableCoursesForClass(Long teacherId, Long classId, String academicYear) {
         // 获取教师已通过的课程申请
-        LambdaQueryWrapper<CourseApplication> applicationWrapper = new LambdaQueryWrapper<>();
-        applicationWrapper.eq(CourseApplication::getTeacherId, teacherId)
-                         .eq(CourseApplication::getAcademicYear, academicYear)
-                         .eq(CourseApplication::getStatus, 1); // 已通过
-        
-        List<CourseApplication> applications = courseApplicationMapper.selectList(applicationWrapper);
+        List<CourseApplication> applications = courseApplicationMapper.selectByTeacherIdAndAcademicYearAndStatus(teacherId, academicYear, 1);
         
         return applications.stream().map(application -> {
             // 获取或创建该班级的课时记录
@@ -125,7 +128,7 @@ public class ClassCourseHoursServiceImpl extends ServiceImpl<ClassCourseHoursMap
 
     @Override
     public boolean hasEnoughHours(Long classCourseHoursId, Integer requiredHours) {
-        ClassCourseHours classCourseHours = this.getById(classCourseHoursId);
+        ClassCourseHours classCourseHours = classCourseHoursMapper.selectById(classCourseHoursId);
         if (classCourseHours == null) {
             return false;
         }
@@ -135,10 +138,10 @@ public class ClassCourseHoursServiceImpl extends ServiceImpl<ClassCourseHoursMap
 
     @Override
     public ClassCourseHours getByApplicationAndClass(Long applicationId, Long classId) {
-        LambdaQueryWrapper<ClassCourseHours> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ClassCourseHours::getApplicationId, applicationId)
-               .eq(ClassCourseHours::getClassId, classId);
-        
-        return this.getOne(wrapper);
+        List<ClassCourseHours> list = classCourseHoursMapper.selectByApplicationId(applicationId);
+        return list.stream()
+                .filter(c -> c.getClassId().equals(classId))
+                .findFirst()
+                .orElse(null);
     }
 } 

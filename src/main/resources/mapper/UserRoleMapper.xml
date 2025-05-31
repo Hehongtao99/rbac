@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.UserRoleMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.example.entity.UserRole">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="role_id" property="roleId" jdbcType="BIGINT"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, user_id, role_id, create_time, deleted
+    </sql>
+
+    <!-- 插入 -->
+    <insert id="insert" parameterType="com.example.entity.UserRole" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_user_role (user_id, role_id, create_time, deleted)
+        VALUES (#{userId}, #{roleId}, #{createTime}, #{deleted})
+    </insert>
+
+    <!-- 根据ID删除 -->
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM sys_user_role WHERE id = #{id}
+    </delete>
+
+    <!-- 根据ID更新 -->
+    <update id="updateById" parameterType="com.example.entity.UserRole">
+        UPDATE sys_user_role
+        <set>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="roleId != null">role_id = #{roleId},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_user_role
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!-- 条件查询列表 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_user_role
+        <where>
+            deleted = 0
+            <if test="userRole.userId != null">
+                AND user_id = #{userRole.userId}
+            </if>
+            <if test="userRole.roleId != null">
+                AND role_id = #{userRole.roleId}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据用户ID查询 -->
+    <select id="selectByUserId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_user_role
+        WHERE user_id = #{userId} AND deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据角色ID查询 -->
+    <select id="selectByRoleId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_user_role
+        WHERE role_id = #{roleId} AND deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 删除用户的所有角色 -->
+    <delete id="deleteByUserId" parameterType="java.lang.Long">
+        DELETE FROM sys_user_role WHERE user_id = #{userId}
+    </delete>
+
+    <!-- 统计总数 -->
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_user_role
+        <where>
+            deleted = 0
+            <if test="userRole.userId != null">
+                AND user_id = #{userRole.userId}
+            </if>
+            <if test="userRole.roleId != null">
+                AND role_id = #{userRole.roleId}
+            </if>
+        </where>
+    </select>
+
+</mapper> 

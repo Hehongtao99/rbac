@@ -1,13 +1,12 @@
 package com.example.service;
 
-import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.entity.ClassCourseHours;
 import com.example.entity.CourseApplication;
 
 import java.util.List;
 import java.util.Map;
 
-public interface ClassCourseHoursService extends IService<ClassCourseHours> {
+public interface ClassCourseHoursService {
     
     /**
      * 获取或创建班级课程课时记录

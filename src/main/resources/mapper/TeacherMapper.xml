@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.TeacherMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.example.entity.Teacher">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="teacher_no" property="teacherNo" jdbcType="VARCHAR"/>
+        <result column="name" property="name" jdbcType="VARCHAR"/>
+        <result column="gender" property="gender" jdbcType="VARCHAR"/>
+        <result column="phone" property="phone" jdbcType="VARCHAR"/>
+        <result column="email" property="email" jdbcType="VARCHAR"/>
+        <result column="department" property="department" jdbcType="VARCHAR"/>
+        <result column="title" property="title" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, teacher_no, name, gender, phone, email, department, title, status, create_time, update_time, deleted
+    </sql>
+
+    <!-- 插入 -->
+    <insert id="insert" parameterType="com.example.entity.Teacher" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_teacher (teacher_no, name, gender, phone, email, department, title, status, create_time, update_time, deleted)
+        VALUES (#{teacherNo}, #{name}, #{gender}, #{phone}, #{email}, #{department}, #{title}, #{status}, #{createTime}, #{updateTime}, #{deleted})
+    </insert>
+
+    <!-- 根据ID删除 -->
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM sys_teacher WHERE id = #{id}
+    </delete>
+
+    <!-- 根据ID更新 -->
+    <update id="updateById" parameterType="com.example.entity.Teacher">
+        UPDATE sys_teacher
+        <set>
+            <if test="teacherNo != null">teacher_no = #{teacherNo},</if>
+            <if test="name != null">name = #{name},</if>
+            <if test="gender != null">gender = #{gender},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="email != null">email = #{email},</if>
+            <if test="department != null">department = #{department},</if>
+            <if test="title != null">title = #{title},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_teacher
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!-- 条件查询列表 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_teacher
+        <where>
+            deleted = 0
+            <if test="teacher.teacherNo != null and teacher.teacherNo != ''">
+                AND teacher_no = #{teacher.teacherNo}
+            </if>
+            <if test="teacher.name != null and teacher.name != ''">
+                AND name = #{teacher.name}
+            </if>
+            <if test="teacher.status != null">
+                AND status = #{teacher.status}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据教师编号查询 -->
+    <select id="selectByTeacherNo" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_teacher
+        WHERE teacher_no = #{teacherNo} AND deleted = 0
+    </select>
+
+    <!-- 分页查询 -->
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_teacher
+        <where>
+            deleted = 0
+            <if test="keyword != null and keyword != ''">
+                AND (name LIKE CONCAT('%', #{keyword}, '%')
+                OR teacher_no LIKE CONCAT('%', #{keyword}, '%')
+                OR department LIKE CONCAT('%', #{keyword}, '%')
+                OR title LIKE CONCAT('%', #{keyword}, '%')
+                OR email LIKE CONCAT('%', #{keyword}, '%')
+                OR phone LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 统计总数 -->
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_teacher
+        <where>
+            deleted = 0
+            <if test="teacher.teacherNo != null and teacher.teacherNo != ''">
+                AND teacher_no = #{teacher.teacherNo}
+            </if>
+            <if test="teacher.name != null and teacher.name != ''">
+                AND name = #{teacher.name}
+            </if>
+            <if test="teacher.status != null">
+                AND status = #{teacher.status}
+            </if>
+        </where>
+    </select>
+
+</mapper> 

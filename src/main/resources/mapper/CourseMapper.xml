@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.CourseMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.example.entity.Course">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="course_name" property="courseName" jdbcType="VARCHAR"/>
+        <result column="course_description" property="courseDescription" jdbcType="VARCHAR"/>
+        <result column="max_students" property="maxStudents" jdbcType="INTEGER"/>
+        <result column="current_students" property="currentStudents" jdbcType="INTEGER"/>
+        <result column="teacher_id" property="teacherId" jdbcType="BIGINT"/>
+        <result column="teacher_name" property="teacherName" jdbcType="VARCHAR"/>
+        <result column="course_hours" property="courseHours" jdbcType="INTEGER"/>
+        <result column="academic_year" property="academicYear" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="allow_application" property="allowApplication" jdbcType="INTEGER"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, course_name, course_description, max_students, current_students, teacher_id, teacher_name, 
+        course_hours, academic_year, status, allow_application, create_time, update_time, deleted
+    </sql>
+
+    <!-- 插入 -->
+    <insert id="insert" parameterType="com.example.entity.Course" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_course (course_name, course_description, max_students, current_students, teacher_id, teacher_name, 
+                               course_hours, academic_year, status, allow_application, create_time, update_time, deleted)
+        VALUES (#{courseName}, #{courseDescription}, #{maxStudents}, #{currentStudents}, #{teacherId}, #{teacherName}, 
+                #{courseHours}, #{academicYear}, #{status}, #{allowApplication}, #{createTime}, #{updateTime}, #{deleted})
+    </insert>
+
+    <!-- 根据ID删除 -->
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM sys_course WHERE id = #{id}
+    </delete>
+
+    <!-- 根据ID更新 -->
+    <update id="updateById" parameterType="com.example.entity.Course">
+        UPDATE sys_course
+        <set>
+            <if test="courseName != null">course_name = #{courseName},</if>
+            <if test="courseDescription != null">course_description = #{courseDescription},</if>
+            <if test="maxStudents != null">max_students = #{maxStudents},</if>
+            <if test="currentStudents != null">current_students = #{currentStudents},</if>
+            <if test="teacherId != null">teacher_id = #{teacherId},</if>
+            <if test="teacherName != null">teacher_name = #{teacherName},</if>
+            <if test="courseHours != null">course_hours = #{courseHours},</if>
+            <if test="academicYear != null">academic_year = #{academicYear},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="allowApplication != null">allow_application = #{allowApplication},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_course
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!-- 条件查询列表 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_course
+        <where>
+            deleted = 0
+            <if test="course.courseName != null and course.courseName != ''">
+                AND course_name = #{course.courseName}
+            </if>
+            <if test="course.teacherId != null">
+                AND teacher_id = #{course.teacherId}
+            </if>
+            <if test="course.status != null">
+                AND status = #{course.status}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据教师ID查询课程 -->
+    <select id="selectByTeacherId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_course
+        WHERE teacher_id = #{teacherId} AND deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 分页查询 -->
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_course
+        <where>
+            deleted = 0
+            <if test="keyword != null and keyword != ''">
+                AND (course_name LIKE CONCAT('%', #{keyword}, '%')
+                OR course_description LIKE CONCAT('%', #{keyword}, '%')
+                OR teacher_name LIKE CONCAT('%', #{keyword}, '%')
+                OR academic_year LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 统计总数 -->
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_course
+        <where>
+            deleted = 0
+            <if test="course.courseName != null and course.courseName != ''">
+                AND course_name = #{course.courseName}
+            </if>
+            <if test="course.teacherId != null">
+                AND teacher_id = #{course.teacherId}
+            </if>
+            <if test="course.status != null">
+                AND status = #{course.status}
+            </if>
+        </where>
+    </select>
+
+</mapper> 

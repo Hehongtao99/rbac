@@ -10,8 +10,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-
 @RestController
 @RequestMapping("/api/course-applications")
 public class CourseApplicationController {
@@ -69,9 +67,8 @@ public class CourseApplicationController {
     @GetMapping("/debug/all")
     public Result<Object> getAllApplicationsForDebug() {
         try {
-            LambdaQueryWrapper<CourseApplication> wrapper = new LambdaQueryWrapper<>();
-            wrapper.orderByDesc(CourseApplication::getCreateTime);
-            List<CourseApplication> allApplications = courseApplicationMapper.selectList(wrapper);
+            CourseApplication queryApplication = new CourseApplication();
+            List<CourseApplication> allApplications = courseApplicationMapper.selectList(queryApplication);
             
             System.out.println("=== 调试：所有申请记录 ===");
             System.out.println("总记录数: " + allApplications.size());

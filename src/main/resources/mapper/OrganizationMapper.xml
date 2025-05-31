@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.OrganizationMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.example.entity.Organization">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="org_name" property="orgName" jdbcType="VARCHAR"/>
+        <result column="org_code" property="orgCode" jdbcType="VARCHAR"/>
+        <result column="parent_id" property="parentId" jdbcType="BIGINT"/>
+        <result column="org_type" property="orgType" jdbcType="VARCHAR"/>
+        <result column="org_level" property="orgLevel" jdbcType="INTEGER"/>
+        <result column="sort" property="sort" jdbcType="INTEGER"/>
+        <result column="phone" property="phone" jdbcType="VARCHAR"/>
+        <result column="email" property="email" jdbcType="VARCHAR"/>
+        <result column="description" property="description" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, org_name, org_code, parent_id, org_type, org_level, sort, phone, email, description, status, create_time, update_time
+    </sql>
+
+    <!-- 插入 -->
+    <insert id="insert" parameterType="com.example.entity.Organization" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_organization (org_name, org_code, parent_id, org_type, org_level, sort, phone, email, description, status, create_time, update_time)
+        VALUES (#{orgName}, #{orgCode}, #{parentId}, #{orgType}, #{orgLevel}, #{sort}, #{phone}, #{email}, #{description}, #{status}, #{createTime}, #{updateTime})
+    </insert>
+
+    <!-- 根据ID删除 -->
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM sys_organization WHERE id = #{id}
+    </delete>
+
+    <!-- 根据ID更新 -->
+    <update id="updateById" parameterType="com.example.entity.Organization">
+        UPDATE sys_organization
+        <set>
+            <if test="orgName != null">org_name = #{orgName},</if>
+            <if test="orgCode != null">org_code = #{orgCode},</if>
+            <if test="parentId != null">parent_id = #{parentId},</if>
+            <if test="orgType != null">org_type = #{orgType},</if>
+            <if test="orgLevel != null">org_level = #{orgLevel},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="email != null">email = #{email},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_organization
+        WHERE id = #{id}
+    </select>
+
+    <!-- 条件查询列表 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_organization
+        <where>
+            <if test="organization.orgName != null and organization.orgName != ''">
+                AND org_name = #{organization.orgName}
+            </if>
+            <if test="organization.orgCode != null and organization.orgCode != ''">
+                AND org_code = #{organization.orgCode}
+            </if>
+            <if test="organization.orgType != null and organization.orgType != ''">
+                AND org_type = #{organization.orgType}
+            </if>
+            <if test="organization.status != null">
+                AND status = #{organization.status}
+            </if>
+        </where>
+        ORDER BY org_level ASC, sort ASC
+    </select>
+
+    <!-- 根据ID列表和状态查询 -->
+    <select id="selectByIdsAndStatus" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_organization
+        WHERE status = #{status}
+        AND id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY org_level ASC, sort ASC
+    </select>
+
+    <!-- 根据状态查询 -->
+    <select id="selectByStatus" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_organization
+        WHERE status = #{status}
+        ORDER BY org_level ASC, sort ASC
+    </select>
+
+    <!-- 根据父级ID查询子组织 -->
+    <select id="selectByParentId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_organization
+        WHERE parent_id = #{parentId}
+        ORDER BY sort ASC, create_time ASC
+    </select>
+
+    <!-- 根据父级ID和状态查询子组织 -->
+    <select id="selectByParentIdAndStatus" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_organization
+        WHERE parent_id = #{parentId} AND status = #{status}
+        ORDER BY sort ASC, create_time ASC
+    </select>
+
+    <!-- 根据组织ID列表、级别和状态查询 -->
+    <select id="selectByIdsAndLevelAndStatus" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_organization
+        <where>
+            <if test="orgIds != null and orgIds.size() > 0">
+                AND id IN
+                <foreach collection="orgIds" item="id" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+            </if>
+            <if test="orgLevel != null">
+                AND org_level = #{orgLevel}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY sort ASC, create_time ASC
+    </select>
+
+    <!-- 根据组织名称查询 -->
+    <select id="selectByOrgName" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_organization
+        WHERE org_name = #{orgName}
+    </select>
+
+    <!-- 根据组织编码查询 -->
+    <select id="selectByOrgCode" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_organization
+        WHERE org_code = #{orgCode}
+    </select>
+
+    <!-- 根据组织名称查询（排除指定ID） -->
+    <select id="selectByOrgNameExcludeId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_organization
+        WHERE org_name = #{orgName} AND id != #{excludeId}
+    </select>
+
+    <!-- 根据组织编码查询（排除指定ID） -->
+    <select id="selectByOrgCodeExcludeId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_organization
+        WHERE org_code = #{orgCode} AND id != #{excludeId}
+    </select>
+
+    <!-- 根据级别查询 -->
+    <select id="selectByLevel" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_organization
+        WHERE org_level = #{orgLevel} AND status = 1
+        ORDER BY sort ASC, create_time ASC
+    </select>
+
+    <!-- 条件查询（支持名称、编码、类型筛选） -->
+    <select id="selectByConditions" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_organization
+        <where>
+            status = #{status}
+            <if test="orgName != null and orgName != ''">
+                AND org_name LIKE CONCAT('%', #{orgName}, '%')
+            </if>
+            <if test="orgCode != null and orgCode != ''">
+                AND org_code LIKE CONCAT('%', #{orgCode}, '%')
+            </if>
+            <if test="orgType != null and orgType != ''">
+                AND org_type = #{orgType}
+            </if>
+        </where>
+        ORDER BY org_level ASC, sort ASC
+    </select>
+
+    <!-- 统计总数 -->
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_organization
+        <where>
+            <if test="organization.orgName != null and organization.orgName != ''">
+                AND org_name LIKE CONCAT('%', #{organization.orgName}, '%')
+            </if>
+            <if test="organization.orgCode != null and organization.orgCode != ''">
+                AND org_code = #{organization.orgCode}
+            </if>
+            <if test="organization.parentId != null">
+                AND parent_id = #{organization.parentId}
+            </if>
+            <if test="organization.orgLevel != null">
+                AND org_level = #{organization.orgLevel}
+            </if>
+            <if test="organization.status != null">
+                AND status = #{organization.status}
+            </if>
+        </where>
+    </select>
+
+</mapper> 

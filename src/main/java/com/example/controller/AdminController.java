@@ -1,6 +1,5 @@
 package com.example.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.common.Result;
 import com.example.entity.Menu;
 import com.example.entity.Organization;
@@ -62,9 +61,7 @@ public class AdminController {
     @GetMapping("/users")
     public Result<List<UserWithRoleVO>> getAllUsers() {
         try {
-            LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(User::getStatus, 1);
-            List<User> users = userMapper.selectList(wrapper);
+            List<User> users = userMapper.selectByStatus(1);
             
             List<UserWithRoleVO> userWithRoleVOs = users.stream().map(user -> {
                 UserWithRoleVO userVO = new UserWithRoleVO();
@@ -78,9 +75,7 @@ public class AdminController {
                 userVO.setUpdateTime(user.getUpdateTime());
                 
                 // 获取用户角色信息
-                LambdaQueryWrapper<UserRole> userRoleWrapper = new LambdaQueryWrapper<>();
-                userRoleWrapper.eq(UserRole::getUserId, user.getId());
-                List<UserRole> userRoles = userRoleMapper.selectList(userRoleWrapper);
+                List<UserRole> userRoles = userRoleMapper.selectByUserId(user.getId());
                 
                 List<String> roleNames = new ArrayList<>();
                 List<Long> roleIds = new ArrayList<>();
@@ -110,9 +105,7 @@ public class AdminController {
     public Result<Void> addUser(@RequestBody User user) {
         try {
             // 检查用户名是否已存在
-            LambdaQueryWrapper<User> checkWrapper = new LambdaQueryWrapper<>();
-            checkWrapper.eq(User::getUsername, user.getUsername());
-            User existUser = userMapper.selectOne(checkWrapper);
+            User existUser = userMapper.selectByUsername(user.getUsername());
             if (existUser != null) {
                 return Result.error("用户名已存在");
             }
@@ -122,6 +115,7 @@ public class AdminController {
             user.setCreateTime(LocalDateTime.now());
             user.setUpdateTime(LocalDateTime.now());
             user.setStatus(1);
+            user.setDeleted(0);
             
             userMapper.insert(user);
             return Result.success();
@@ -141,10 +135,7 @@ public class AdminController {
             }
             
             // 检查用户名是否被其他用户使用
-            LambdaQueryWrapper<User> checkWrapper = new LambdaQueryWrapper<>();
-            checkWrapper.eq(User::getUsername, user.getUsername())
-                    .ne(User::getId, id);
-            User duplicateUser = userMapper.selectOne(checkWrapper);
+            User duplicateUser = userMapper.selectByUsernameExcludeId(user.getUsername(), id);
             if (duplicateUser != null) {
                 return Result.error("用户名已被其他用户使用");
             }
@@ -184,9 +175,7 @@ public class AdminController {
             userMapper.updateById(existUser);
             
             // 删除用户角色关联
-            LambdaQueryWrapper<UserRole> deleteWrapper = new LambdaQueryWrapper<>();
-            deleteWrapper.eq(UserRole::getUserId, id);
-            userRoleMapper.delete(deleteWrapper);
+            userRoleMapper.deleteByUserId(id);
             
             return Result.success();
         } catch (Exception e) {
@@ -215,9 +204,7 @@ public class AdminController {
     @GetMapping("/user-roles/{userId}")
     public Result<List<Long>> getUserRoles(@PathVariable Long userId) {
         try {
-            LambdaQueryWrapper<UserRole> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(UserRole::getUserId, userId);
-            List<UserRole> userRoles = userRoleMapper.selectList(wrapper);
+            List<UserRole> userRoles = userRoleMapper.selectByUserId(userId);
             
             List<Long> roleIds = userRoles.stream()
                     .map(UserRole::getRoleId)
@@ -234,9 +221,7 @@ public class AdminController {
     public Result<Void> assignRole(@RequestParam Long userId, @RequestParam Long roleId) {
         try {
             // 先删除用户现有角色
-            LambdaQueryWrapper<UserRole> deleteWrapper = new LambdaQueryWrapper<>();
-            deleteWrapper.eq(UserRole::getUserId, userId);
-            userRoleMapper.delete(deleteWrapper);
+            userRoleMapper.deleteByUserId(userId);
             
             // 分配新角色
             UserRole userRole = new UserRole();
@@ -250,14 +235,12 @@ public class AdminController {
         }
     }
     
-    // 分配角色菜单权限
+    // 分配菜单权限
     @PostMapping("/assign-menu")
     public Result<Void> assignMenu(@RequestParam Long roleId, @RequestBody List<Long> menuIds) {
         try {
             // 先删除角色现有菜单权限
-            LambdaQueryWrapper<RoleMenu> deleteWrapper = new LambdaQueryWrapper<>();
-            deleteWrapper.eq(RoleMenu::getRoleId, roleId);
-            roleMenuMapper.delete(deleteWrapper);
+            roleMenuMapper.deleteByRoleId(roleId);
             
             // 分配新的菜单权限
             if (menuIds != null && !menuIds.isEmpty()) {
@@ -281,10 +264,7 @@ public class AdminController {
     @GetMapping("/roles")
     public Result<List<Role>> getAllRoles() {
         try {
-            LambdaQueryWrapper<Role> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(Role::getStatus, 1)
-                    .orderByAsc(Role::getId);
-            List<Role> roles = roleMapper.selectList(wrapper);
+            List<Role> roles = roleMapper.selectByStatus(1);
             return Result.success(roles);
         } catch (Exception e) {
             return Result.error(e.getMessage());
@@ -296,17 +276,13 @@ public class AdminController {
     public Result<Void> addRole(@RequestBody Role role) {
         try {
             // 检查角色名称是否已存在
-            LambdaQueryWrapper<Role> checkWrapper = new LambdaQueryWrapper<>();
-            checkWrapper.eq(Role::getRoleName, role.getRoleName());
-            Role existRole = roleMapper.selectOne(checkWrapper);
+            Role existRole = roleMapper.selectByRoleName(role.getRoleName());
             if (existRole != null) {
                 return Result.error("角色名称已存在");
             }
             
             // 检查角色编码是否已存在
-            LambdaQueryWrapper<Role> codeWrapper = new LambdaQueryWrapper<>();
-            codeWrapper.eq(Role::getRoleCode, role.getRoleCode());
-            Role existCodeRole = roleMapper.selectOne(codeWrapper);
+            Role existCodeRole = roleMapper.selectByRoleCode(role.getRoleCode());
             if (existCodeRole != null) {
                 return Result.error("角色编码已存在");
             }
@@ -314,6 +290,7 @@ public class AdminController {
             role.setCreateTime(LocalDateTime.now());
             role.setUpdateTime(LocalDateTime.now());
             role.setStatus(1);
+            role.setDeleted(0);
             
             roleMapper.insert(role);
             return Result.success();
@@ -333,19 +310,13 @@ public class AdminController {
             }
             
             // 检查角色名称是否被其他角色使用
-            LambdaQueryWrapper<Role> checkWrapper = new LambdaQueryWrapper<>();
-            checkWrapper.eq(Role::getRoleName, role.getRoleName())
-                    .ne(Role::getId, id);
-            Role duplicateRole = roleMapper.selectOne(checkWrapper);
+            Role duplicateRole = roleMapper.selectByRoleNameExcludeId(role.getRoleName(), id);
             if (duplicateRole != null) {
                 return Result.error("角色名称已被其他角色使用");
             }
             
             // 检查角色编码是否被其他角色使用
-            LambdaQueryWrapper<Role> codeWrapper = new LambdaQueryWrapper<>();
-            codeWrapper.eq(Role::getRoleCode, role.getRoleCode())
-                    .ne(Role::getId, id);
-            Role duplicateCodeRole = roleMapper.selectOne(codeWrapper);
+            Role duplicateCodeRole = roleMapper.selectByRoleCodeExcludeId(role.getRoleCode(), id);
             if (duplicateCodeRole != null) {
                 return Result.error("角色编码已被其他角色使用");
             }
@@ -373,9 +344,9 @@ public class AdminController {
             }
             
             // 检查是否有用户使用该角色
-            LambdaQueryWrapper<UserRole> userRoleWrapper = new LambdaQueryWrapper<>();
-            userRoleWrapper.eq(UserRole::getRoleId, id);
-            long userCount = userRoleMapper.selectCount(userRoleWrapper);
+            UserRole queryUserRole = new UserRole();
+            queryUserRole.setRoleId(id);
+            long userCount = userRoleMapper.selectCount(queryUserRole);
             if (userCount > 0) {
                 return Result.error("该角色正在被用户使用，无法删除");
             }
@@ -386,9 +357,7 @@ public class AdminController {
             roleMapper.updateById(existRole);
             
             // 删除角色菜单关联
-            LambdaQueryWrapper<RoleMenu> roleMenuWrapper = new LambdaQueryWrapper<>();
-            roleMenuWrapper.eq(RoleMenu::getRoleId, id);
-            roleMenuMapper.delete(roleMenuWrapper);
+            roleMenuMapper.deleteByRoleId(id);
             
             return Result.success();
         } catch (Exception e) {
@@ -415,10 +384,7 @@ public class AdminController {
     @GetMapping("/menus")
     public Result<List<MenuVO>> getAllMenus() {
         try {
-            LambdaQueryWrapper<Menu> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(Menu::getStatus, 1)
-                    .orderByAsc(Menu::getSort);
-            List<Menu> menus = menuMapper.selectList(wrapper);
+            List<Menu> menus = menuMapper.selectByTypeAndStatus("MENU", 1);
             
             // 转换为VO并构建树形结构
             List<MenuVO> menuVOs = menus.stream().map(menu -> {
@@ -446,9 +412,7 @@ public class AdminController {
     @GetMapping("/role-menus/{roleId}")
     public Result<List<Long>> getRoleMenus(@PathVariable Long roleId) {
         try {
-            LambdaQueryWrapper<RoleMenu> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(RoleMenu::getRoleId, roleId);
-            List<RoleMenu> roleMenus = roleMenuMapper.selectList(wrapper);
+            List<RoleMenu> roleMenus = roleMenuMapper.selectByRoleId(roleId);
             
             List<Long> menuIds = roleMenus.stream()
                     .map(RoleMenu::getMenuId)
@@ -483,23 +447,23 @@ public class AdminController {
             @RequestParam(required = false) String orgCode,
             @RequestParam(required = false) String orgType) {
         try {
-            LambdaQueryWrapper<Organization> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(Organization::getStatus, 1);
+            List<Organization> organizations;
             
-            // 添加查询条件
-            if (orgName != null && !orgName.trim().isEmpty()) {
-                wrapper.like(Organization::getOrgName, orgName.trim());
+            // 根据查询条件决定使用哪个查询方法
+            if ((orgName != null && !orgName.trim().isEmpty()) || 
+                (orgCode != null && !orgCode.trim().isEmpty()) || 
+                (orgType != null && !orgType.trim().isEmpty())) {
+                // 有查询条件，使用条件查询
+                organizations = organizationMapper.selectByConditions(
+                    orgName != null ? orgName.trim() : null,
+                    orgCode != null ? orgCode.trim() : null,
+                    orgType != null ? orgType.trim() : null,
+                    1
+                );
+            } else {
+                // 无查询条件，查询所有启用的组织
+                organizations = organizationMapper.selectByStatus(1);
             }
-            if (orgCode != null && !orgCode.trim().isEmpty()) {
-                wrapper.like(Organization::getOrgCode, orgCode.trim());
-            }
-            if (orgType != null && !orgType.trim().isEmpty()) {
-                wrapper.eq(Organization::getOrgType, orgType.trim());
-            }
-            
-            wrapper.orderByAsc(Organization::getOrgLevel)
-                    .orderByAsc(Organization::getSort);
-            List<Organization> organizations = organizationMapper.selectList(wrapper);
             
             // 转换为VO并构建树形结构
             List<OrganizationVO> organizationVOs = organizations.stream().map(org -> {
@@ -539,17 +503,13 @@ public class AdminController {
     public Result<Void> addOrganization(@RequestBody Organization organization) {
         try {
             // 检查组织名称是否已存在
-            LambdaQueryWrapper<Organization> nameWrapper = new LambdaQueryWrapper<>();
-            nameWrapper.eq(Organization::getOrgName, organization.getOrgName());
-            Organization existNameOrg = organizationMapper.selectOne(nameWrapper);
+            Organization existNameOrg = organizationMapper.selectByOrgName(organization.getOrgName());
             if (existNameOrg != null) {
                 return Result.error("组织名称已存在");
             }
             
             // 检查组织编码是否已存在
-            LambdaQueryWrapper<Organization> codeWrapper = new LambdaQueryWrapper<>();
-            codeWrapper.eq(Organization::getOrgCode, organization.getOrgCode());
-            Organization existCodeOrg = organizationMapper.selectOne(codeWrapper);
+            Organization existCodeOrg = organizationMapper.selectByOrgCode(organization.getOrgCode());
             if (existCodeOrg != null) {
                 return Result.error("组织编码已存在");
             }
@@ -602,19 +562,13 @@ public class AdminController {
             }
             
             // 检查组织名称是否被其他组织使用
-            LambdaQueryWrapper<Organization> nameWrapper = new LambdaQueryWrapper<>();
-            nameWrapper.eq(Organization::getOrgName, organization.getOrgName())
-                    .ne(Organization::getId, id);
-            Organization duplicateNameOrg = organizationMapper.selectOne(nameWrapper);
+            Organization duplicateNameOrg = organizationMapper.selectByOrgNameExcludeId(organization.getOrgName(), id);
             if (duplicateNameOrg != null) {
                 return Result.error("组织名称已被其他组织使用");
             }
             
             // 检查组织编码是否被其他组织使用
-            LambdaQueryWrapper<Organization> codeWrapper = new LambdaQueryWrapper<>();
-            codeWrapper.eq(Organization::getOrgCode, organization.getOrgCode())
-                    .ne(Organization::getId, id);
-            Organization duplicateCodeOrg = organizationMapper.selectOne(codeWrapper);
+            Organization duplicateCodeOrg = organizationMapper.selectByOrgCodeExcludeId(organization.getOrgCode(), id);
             if (duplicateCodeOrg != null) {
                 return Result.error("组织编码已被其他组织使用");
             }
@@ -645,10 +599,10 @@ public class AdminController {
             }
             
             // 检查是否有子组织
-            LambdaQueryWrapper<Organization> childWrapper = new LambdaQueryWrapper<>();
-            childWrapper.eq(Organization::getParentId, id)
-                    .eq(Organization::getStatus, 1);
-            long childCount = organizationMapper.selectCount(childWrapper);
+            Organization queryOrg = new Organization();
+            queryOrg.setParentId(id);
+            queryOrg.setStatus(1);
+            long childCount = organizationMapper.selectCount(queryOrg);
             if (childCount > 0) {
                 return Result.error("该组织下还有子组织，无法删除");
             }
@@ -705,9 +659,7 @@ public class AdminController {
         List<Long> classIds = request.getClassIds();
         try {
             // 获取用户角色信息来判断分配规则
-            LambdaQueryWrapper<UserRole> roleWrapper = new LambdaQueryWrapper<>();
-            roleWrapper.eq(UserRole::getUserId, userId);
-            List<UserRole> userRoles = userRoleMapper.selectList(roleWrapper);
+            List<UserRole> userRoles = userRoleMapper.selectByUserId(userId);
             
             if (userRoles.isEmpty()) {
                 return Result.error("用户未分配角色");
@@ -715,9 +667,7 @@ public class AdminController {
             
             // 获取角色编码
             List<Long> roleIds = userRoles.stream().map(UserRole::getRoleId).collect(Collectors.toList());
-            LambdaQueryWrapper<Role> wrapper = new LambdaQueryWrapper<>();
-            wrapper.in(Role::getId, roleIds);
-            List<Role> roles = roleMapper.selectList(wrapper);
+            List<Role> roles = roleMapper.selectByIds(roleIds);
             
             boolean isStudent = roles.stream().anyMatch(role -> "STUDENT".equals(role.getRoleCode()));
             boolean isTeacher = roles.stream().anyMatch(role -> "TEACHER".equals(role.getRoleCode()));
@@ -824,9 +774,7 @@ public class AdminController {
             }
             
             // 先删除用户现有组织关联
-            LambdaQueryWrapper<UserOrganization> deleteWrapper = new LambdaQueryWrapper<>();
-            deleteWrapper.eq(UserOrganization::getUserId, userId);
-            userOrganizationMapper.delete(deleteWrapper);
+            userOrganizationMapper.deleteByUserId(userId);
             
             // 分配新的组织关联
             if (!organizationIds.isEmpty()) {
@@ -852,9 +800,7 @@ public class AdminController {
     @GetMapping("/user-organizations/{userId}")
     public Result<List<Long>> getUserOrganizations(@PathVariable Long userId) {
         try {
-            LambdaQueryWrapper<UserOrganization> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(UserOrganization::getUserId, userId);
-            List<UserOrganization> userOrganizations = userOrganizationMapper.selectList(wrapper);
+            List<UserOrganization> userOrganizations = userOrganizationMapper.selectByUserId(userId);
             
             List<Long> organizationIds = userOrganizations.stream()
                     .map(UserOrganization::getOrganizationId)
@@ -870,11 +816,7 @@ public class AdminController {
     @GetMapping("/organizations-by-level/{level}")
     public Result<List<OrganizationVO>> getOrganizationsByLevel(@PathVariable Integer level) {
         try {
-            LambdaQueryWrapper<Organization> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(Organization::getOrgLevel, level)
-                    .eq(Organization::getStatus, 1)
-                    .orderByAsc(Organization::getSort);
-            List<Organization> organizations = organizationMapper.selectList(wrapper);
+            List<Organization> organizations = organizationMapper.selectByLevel(level);
             
             List<OrganizationVO> organizationVOs = organizations.stream().map(org -> {
                 OrganizationVO orgVO = new OrganizationVO();
@@ -899,11 +841,7 @@ public class AdminController {
     @GetMapping("/organizations-by-parent/{parentId}")
     public Result<List<OrganizationVO>> getOrganizationsByParent(@PathVariable Long parentId) {
         try {
-            LambdaQueryWrapper<Organization> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(Organization::getParentId, parentId)
-                    .eq(Organization::getStatus, 1)
-                    .orderByAsc(Organization::getSort);
-            List<Organization> organizations = organizationMapper.selectList(wrapper);
+            List<Organization> organizations = organizationMapper.selectByParentIdAndStatus(parentId, 1);
             
             List<OrganizationVO> organizationVOs = organizations.stream().map(org -> {
                 OrganizationVO orgVO = new OrganizationVO();

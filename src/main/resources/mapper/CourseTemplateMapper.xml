@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.CourseTemplateMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.example.entity.CourseTemplate">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="template_name" property="templateName" jdbcType="VARCHAR"/>
+        <result column="description" property="description" jdbcType="VARCHAR"/>
+        <result column="course_hours" property="courseHours" jdbcType="INTEGER"/>
+        <result column="academic_year" property="academicYear" jdbcType="VARCHAR"/>
+        <result column="semester" property="semester" jdbcType="VARCHAR"/>
+        <result column="max_students" property="maxStudents" jdbcType="INTEGER"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, template_name, description, course_hours, academic_year, semester, max_students, status, create_time, update_time, deleted
+    </sql>
+
+    <!-- 插入 -->
+    <insert id="insert" parameterType="com.example.entity.CourseTemplate" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_course_template (template_name, description, course_hours, academic_year, semester, max_students, status, create_time, update_time, deleted)
+        VALUES (#{templateName}, #{description}, #{courseHours}, #{academicYear}, #{semester}, #{maxStudents}, #{status}, #{createTime}, #{updateTime}, #{deleted})
+    </insert>
+
+    <!-- 根据ID删除 -->
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM sys_course_template WHERE id = #{id}
+    </delete>
+
+    <!-- 根据ID更新 -->
+    <update id="updateById" parameterType="com.example.entity.CourseTemplate">
+        UPDATE sys_course_template
+        <set>
+            <if test="templateName != null">template_name = #{templateName},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="courseHours != null">course_hours = #{courseHours},</if>
+            <if test="academicYear != null">academic_year = #{academicYear},</if>
+            <if test="semester != null">semester = #{semester},</if>
+            <if test="maxStudents != null">max_students = #{maxStudents},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_course_template
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!-- 条件查询列表 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_course_template
+        <where>
+            deleted = 0
+            <if test="courseTemplate.templateName != null and courseTemplate.templateName != ''">
+                AND template_name LIKE CONCAT('%', #{courseTemplate.templateName}, '%')
+            </if>
+            <if test="courseTemplate.academicYear != null and courseTemplate.academicYear != ''">
+                AND academic_year = #{courseTemplate.academicYear}
+            </if>
+            <if test="courseTemplate.semester != null and courseTemplate.semester != ''">
+                AND semester = #{courseTemplate.semester}
+            </if>
+            <if test="courseTemplate.status != null">
+                AND status = #{courseTemplate.status}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据模板名称查询 -->
+    <select id="selectByTemplateName" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_course_template
+        WHERE template_name = #{templateName} AND deleted = 0
+    </select>
+
+    <!-- 根据学年查询 -->
+    <select id="selectByAcademicYear" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_course_template
+        WHERE academic_year = #{academicYear} AND deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 分页查询 -->
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_course_template
+        <where>
+            deleted = 0
+            <if test="keyword != null and keyword != ''">
+                AND (template_name LIKE CONCAT('%', #{keyword}, '%')
+                OR description LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 条件分页查询 -->
+    <select id="selectPageByCondition" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_course_template
+        <where>
+            deleted = 0
+            <if test="keyword != null and keyword != ''">
+                AND (template_name LIKE CONCAT('%', #{keyword}, '%')
+                OR description LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="courseTemplate.academicYear != null and courseTemplate.academicYear != ''">
+                AND academic_year = #{courseTemplate.academicYear}
+            </if>
+            <if test="courseTemplate.semester != null and courseTemplate.semester != ''">
+                AND semester = #{courseTemplate.semester}
+            </if>
+            <if test="courseTemplate.status != null">
+                AND status = #{courseTemplate.status}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 统计总数 -->
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_course_template
+        <where>
+            deleted = 0
+            <if test="courseTemplate.templateName != null and courseTemplate.templateName != ''">
+                AND template_name LIKE CONCAT('%', #{courseTemplate.templateName}, '%')
+            </if>
+            <if test="courseTemplate.academicYear != null and courseTemplate.academicYear != ''">
+                AND academic_year = #{courseTemplate.academicYear}
+            </if>
+            <if test="courseTemplate.semester != null and courseTemplate.semester != ''">
+                AND semester = #{courseTemplate.semester}
+            </if>
+            <if test="courseTemplate.status != null">
+                AND status = #{courseTemplate.status}
+            </if>
+        </where>
+    </select>
+
+</mapper> 

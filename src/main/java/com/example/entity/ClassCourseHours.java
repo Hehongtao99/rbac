@@ -1,14 +1,10 @@
 package com.example.entity;
 
-import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
-
 import java.time.LocalDateTime;
 
 @Data
-@TableName("sys_class_course_hours")
 public class ClassCourseHours {
-    @TableId(type = IdType.AUTO)
     private Long id;
     
     private Long applicationId;
@@ -35,12 +31,9 @@ public class ClassCourseHours {
     
     private Integer status;
     
-    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
     
-    @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
     
-    @TableLogic
     private Integer deleted;
 } 

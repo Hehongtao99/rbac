@@ -1,7 +1,5 @@
 package com.example.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.entity.Schedule;
 import com.example.entity.Course;
 import com.example.entity.TimeSlotConfig;
@@ -25,12 +23,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> implements ScheduleService {
+public class ScheduleServiceImpl implements ScheduleService {
 
+    @Autowired
+    private ScheduleMapper scheduleMapper;
+    
     @Autowired
     private CourseMapper courseMapper;
     
@@ -104,9 +106,7 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
         }
         
         // 获取时间段信息
-        LambdaQueryWrapper<TimeSlotConfig> timeWrapper = new LambdaQueryWrapper<>();
-        timeWrapper.eq(TimeSlotConfig::getTimeSlot, scheduleDTO.getTimeSlot());
-        TimeSlotConfig timeSlot = timeSlotConfigMapper.selectOne(timeWrapper);
+        TimeSlotConfig timeSlot = timeSlotConfigMapper.selectByTimeSlot(scheduleDTO.getTimeSlot());
         
         // 创建课程表记录
         Schedule schedule = new Schedule();
@@ -125,9 +125,12 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
         if (timeSlot != null) {
             schedule.setTimeRange(timeSlot.getStartTime() + "-" + timeSlot.getEndTime());
         }
+        schedule.setCreateTime(LocalDateTime.now());
+        schedule.setUpdateTime(LocalDateTime.now());
+        schedule.setDeleted(0);
         
         // 保存课程表
-        this.save(schedule);
+        scheduleMapper.insert(schedule);
         
         // 使用班级课程课时（扣减该班级的剩余课时）
         boolean success = classCourseHoursService.useHours(classCourseHours.getId(), 1);
@@ -149,7 +152,7 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
     @Override
     @Transactional
     public void updateSchedule(Long scheduleId, ScheduleDTO scheduleDTO) {
-        Schedule schedule = this.getById(scheduleId);
+        Schedule schedule = scheduleMapper.selectById(scheduleId);
         if (schedule == null) {
             throw new RuntimeException("课程表记录不存在");
         }
@@ -168,18 +171,15 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
         // 如果要更新时间信息，需要检查新时间是否冲突
         if (scheduleDTO.getDayOfWeek() != null && scheduleDTO.getTimeSlot() != null) {
             // 检查新时间是否与现有课程冲突（排除当前课程）
-            LambdaQueryWrapper<Schedule> conflictWrapper = new LambdaQueryWrapper<>();
-            conflictWrapper.eq(Schedule::getTeacherId, currentUser.getId())
-                          .eq(Schedule::getAcademicYear, schedule.getAcademicYear())
-                          .eq(Schedule::getWeekNumber, schedule.getWeekNumber())
-                          .eq(Schedule::getDayOfWeek, scheduleDTO.getDayOfWeek())
-                          .eq(Schedule::getTimeSlot, scheduleDTO.getTimeSlot())
-                          .ne(Schedule::getId, scheduleId); // 排除当前课程
+            List<Schedule> conflicts = scheduleMapper.selectConflict(currentUser.getId(), 
+                    schedule.getWeekNumber(), scheduleDTO.getDayOfWeek(), scheduleDTO.getTimeSlot());
             
-            // 检查该教师在该时间段是否已经有任何班级的课程（不限制班级）
-            // 这样可以防止同一教师在同一时间段教授多个班级
+            // 排除当前课程
+            conflicts = conflicts.stream()
+                    .filter(s -> !s.getId().equals(scheduleId))
+                    .collect(Collectors.toList());
             
-            if (this.count(conflictWrapper) > 0) {
+            if (!conflicts.isEmpty()) {
                 throw new RuntimeException("目标时间段已有课程安排，无法移动");
             }
             
@@ -202,19 +202,12 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
             schedule.setWeekNumber(scheduleDTO.getWeekNumber());
         }
         
-        this.updateById(schedule);
+        scheduleMapper.updateById(schedule);
     }
 
     @Override
     public List<ScheduleVO> getTeacherSchedule(Long teacherId, String academicYear) {
-        LambdaQueryWrapper<Schedule> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Schedule::getTeacherId, teacherId)
-               .eq(Schedule::getAcademicYear, academicYear)
-               .orderBy(true, true, Schedule::getWeekNumber)
-               .orderBy(true, true, Schedule::getDayOfWeek)
-               .orderBy(true, true, Schedule::getTimeSlot);
-        
-        List<Schedule> schedules = this.list(wrapper);
+        List<Schedule> schedules = scheduleMapper.selectByTeacherAndAcademicYear(teacherId, academicYear);
         return schedules.stream().map(this::convertToVO).collect(Collectors.toList());
     }
 
@@ -229,14 +222,7 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
         // 使用JWT获取的用户ID，忽略传入的teacherId参数
         Long actualTeacherId = currentUser.getId();
         
-        LambdaQueryWrapper<Schedule> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Schedule::getTeacherId, actualTeacherId)
-               .eq(Schedule::getAcademicYear, academicYear)
-               .eq(Schedule::getWeekNumber, weekNumber)
-               .orderBy(true, true, Schedule::getDayOfWeek)
-               .orderBy(true, true, Schedule::getTimeSlot);
-        
-        List<Schedule> schedules = this.list(wrapper);
+        List<Schedule> schedules = scheduleMapper.selectByTeacherAndAcademicYearAndWeekNumber(actualTeacherId, academicYear, weekNumber);
         List<ScheduleVO> scheduleVOs = schedules.stream().map(this::convertToVO).collect(Collectors.toList());
         
         // 按星期分组
@@ -259,20 +245,7 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
             throw new RuntimeException("您没有权限查看该班级的课程表");
         }
         
-        LambdaQueryWrapper<Schedule> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Schedule::getTeacherId, actualTeacherId)
-               .eq(Schedule::getAcademicYear, academicYear)
-               .eq(Schedule::getWeekNumber, weekNumber);
-        
-        if (classId != null) {
-            wrapper.eq(Schedule::getClassId, classId);
-        }
-        // 当classId为null时，不添加班级条件，返回该教师所有班级的课程
-        
-        wrapper.orderBy(true, true, Schedule::getDayOfWeek)
-               .orderBy(true, true, Schedule::getTimeSlot);
-        
-        List<Schedule> schedules = this.list(wrapper);
+        List<Schedule> schedules = scheduleMapper.selectByTeacherAndAcademicYearAndWeekNumberAndClassId(actualTeacherId, academicYear, weekNumber, classId);
         List<ScheduleVO> scheduleVOs = schedules.stream().map(this::convertToVO).collect(Collectors.toList());
         
         // 按星期分组
@@ -282,7 +255,7 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
     @Override
     @Transactional
     public void removeCourseFromSchedule(Long scheduleId) {
-        Schedule schedule = this.getById(scheduleId);
+        Schedule schedule = scheduleMapper.selectById(scheduleId);
         if (schedule == null) {
             throw new RuntimeException("课程表记录不存在");
         }
@@ -323,7 +296,7 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
         }
         
         // 删除课程表记录
-        this.removeById(scheduleId);
+        scheduleMapper.deleteById(scheduleId);
         System.out.println("=== 删除课程完成 ===");
     }
 
@@ -338,21 +311,18 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
         // 使用JWT获取的用户ID，忽略传入的teacherId参数
         Long actualTeacherId = currentUser.getId();
         
-        LambdaQueryWrapper<Schedule> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Schedule::getTeacherId, actualTeacherId)
-               .eq(Schedule::getAcademicYear, academicYear)
-               .eq(Schedule::getWeekNumber, weekNumber)
-               .eq(Schedule::getDayOfWeek, dayOfWeek)
-               .eq(Schedule::getTimeSlot, timeSlot);
+        List<Schedule> conflicts = scheduleMapper.selectConflict(actualTeacherId, weekNumber, dayOfWeek, timeSlot);
         
         // 如果指定了班级，检查该班级的时间冲突
         // 如果没有指定班级（classId为null），检查该教师在该时间段是否已经有任何班级的课程
         if (classId != null) {
-            wrapper.eq(Schedule::getClassId, classId);
+            conflicts = conflicts.stream()
+                    .filter(s -> s.getClassId().equals(classId))
+                    .collect(Collectors.toList());
         }
         // 当classId为null时，不添加班级条件，这样会检查该教师在该时间段的所有班级课程
         
-        return this.count(wrapper) > 0;
+        return !conflicts.isEmpty();
     }
 
     @Override
@@ -370,12 +340,7 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
         System.out.println("学年: " + academicYear);
         
         // 查询教师申请通过的课程申请
-        LambdaQueryWrapper<CourseApplication> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CourseApplication::getTeacherId, actualTeacherId)
-               .eq(CourseApplication::getAcademicYear, academicYear)
-               .eq(CourseApplication::getStatus, 1); // 已审核通过
-        
-        List<CourseApplication> applications = courseApplicationMapper.selectList(wrapper);
+        List<CourseApplication> applications = courseApplicationMapper.selectByTeacherIdAndAcademicYearAndStatus(actualTeacherId, academicYear, 1);
         System.out.println("找到的申请记录数: " + applications.size());
         
         return applications.stream()
@@ -432,27 +397,7 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
         System.out.println("教师姓名: " + teacherName);
         System.out.println("课程名称: " + courseName);
         
-        LambdaQueryWrapper<Schedule> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Schedule::getAcademicYear, academicYear);
-        
-        if (weekNumber != null) {
-            wrapper.eq(Schedule::getWeekNumber, weekNumber);
-        }
-        
-        if (StringUtils.hasText(teacherName)) {
-            wrapper.like(Schedule::getTeacherName, teacherName);
-        }
-        
-        if (StringUtils.hasText(courseName)) {
-            wrapper.like(Schedule::getCourseName, courseName);
-        }
-        
-        wrapper.orderBy(true, true, Schedule::getWeekNumber)
-               .orderBy(true, true, Schedule::getDayOfWeek)
-               .orderBy(true, true, Schedule::getTimeSlot)
-               .orderBy(true, true, Schedule::getTeacherName);
-        
-        List<Schedule> schedules = this.list(wrapper);
+        List<Schedule> schedules = scheduleMapper.selectByAcademicYearAndWeekNumberAndTeacherNameAndCourseName(academicYear, weekNumber, teacherName, courseName);
         System.out.println("查询到的课程表数量: " + schedules.size());
         
         for (Schedule schedule : schedules) {
@@ -468,19 +413,14 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
 
     @Override
     public Map<String, Object> getWeeklyScheduleForAdmin(String academicYear, Integer weekNumber, Long teacherId) {
-        LambdaQueryWrapper<Schedule> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Schedule::getAcademicYear, academicYear)
-               .eq(Schedule::getWeekNumber, weekNumber);
-        
+        Schedule querySchedule = new Schedule();
+        querySchedule.setAcademicYear(academicYear);
+        querySchedule.setWeekNumber(weekNumber);
         if (teacherId != null) {
-            wrapper.eq(Schedule::getTeacherId, teacherId);
+            querySchedule.setTeacherId(teacherId);
         }
         
-        wrapper.orderBy(true, true, Schedule::getDayOfWeek)
-               .orderBy(true, true, Schedule::getTimeSlot)
-               .orderBy(true, true, Schedule::getTeacherName);
-        
-        List<Schedule> schedules = this.list(wrapper);
+        List<Schedule> schedules = scheduleMapper.selectList(querySchedule);
         List<ScheduleVO> scheduleVOs = schedules.stream().map(this::convertToVO).collect(Collectors.toList());
         
         // 按星期分组

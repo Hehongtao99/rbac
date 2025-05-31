@@ -1,29 +1,33 @@
 package com.example.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.entity.TimeSlotConfig;
 import com.example.mapper.TimeSlotConfigMapper;
 import com.example.service.TimeSlotConfigService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
-public class TimeSlotConfigServiceImpl extends ServiceImpl<TimeSlotConfigMapper, TimeSlotConfig> implements TimeSlotConfigService {
+public class TimeSlotConfigServiceImpl implements TimeSlotConfigService {
+
+    @Autowired
+    private TimeSlotConfigMapper timeSlotConfigMapper;
 
     @Override
     public List<TimeSlotConfig> getAllTimeSlots() {
-        LambdaQueryWrapper<TimeSlotConfig> wrapper = new LambdaQueryWrapper<>();
-        wrapper.orderByAsc(TimeSlotConfig::getTimeSlot);
-        return this.list(wrapper);
+        TimeSlotConfig queryConfig = new TimeSlotConfig();
+        List<TimeSlotConfig> configs = timeSlotConfigMapper.selectList(queryConfig);
+        return configs;
     }
 
     @Override
     public void initTimeSlotConfig() {
         // 检查是否已经初始化
-        long count = this.count();
+        TimeSlotConfig queryConfig = new TimeSlotConfig();
+        long count = timeSlotConfigMapper.selectCount(queryConfig);
         if (count > 0) {
             return;
         }
@@ -38,6 +42,9 @@ public class TimeSlotConfigServiceImpl extends ServiceImpl<TimeSlotConfigMapper,
         slot1.setEndTime("09:40");
         slot1.setPeriod("上午");
         slot1.setDescription("上午第一大节（8:00-8:45, 8:55-9:40）");
+        slot1.setCreateTime(LocalDateTime.now());
+        slot1.setUpdateTime(LocalDateTime.now());
+        slot1.setDeleted(0);
         configs.add(slot1);
         
         TimeSlotConfig slot2 = new TimeSlotConfig();
@@ -47,6 +54,9 @@ public class TimeSlotConfigServiceImpl extends ServiceImpl<TimeSlotConfigMapper,
         slot2.setEndTime("11:40");
         slot2.setPeriod("上午");
         slot2.setDescription("上午第二大节（10:00-10:45, 10:55-11:40）");
+        slot2.setCreateTime(LocalDateTime.now());
+        slot2.setUpdateTime(LocalDateTime.now());
+        slot2.setDeleted(0);
         configs.add(slot2);
         
         // 下午时间段
@@ -57,6 +67,9 @@ public class TimeSlotConfigServiceImpl extends ServiceImpl<TimeSlotConfigMapper,
         slot3.setEndTime("18:10");
         slot3.setPeriod("下午");
         slot3.setDescription("下午第一大节（16:30-17:15, 17:25-18:10）");
+        slot3.setCreateTime(LocalDateTime.now());
+        slot3.setUpdateTime(LocalDateTime.now());
+        slot3.setDeleted(0);
         configs.add(slot3);
         
         TimeSlotConfig slot4 = new TimeSlotConfig();
@@ -66,6 +79,9 @@ public class TimeSlotConfigServiceImpl extends ServiceImpl<TimeSlotConfigMapper,
         slot4.setEndTime("20:00");
         slot4.setPeriod("下午");
         slot4.setDescription("下午第二大节（18:20-19:05, 19:15-20:00）");
+        slot4.setCreateTime(LocalDateTime.now());
+        slot4.setUpdateTime(LocalDateTime.now());
+        slot4.setDeleted(0);
         configs.add(slot4);
         
         // 晚上时间段
@@ -76,6 +92,9 @@ public class TimeSlotConfigServiceImpl extends ServiceImpl<TimeSlotConfigMapper,
         slot5.setEndTime("20:40");
         slot5.setPeriod("晚上");
         slot5.setDescription("晚上第一大节（19:00-19:45, 19:55-20:40）");
+        slot5.setCreateTime(LocalDateTime.now());
+        slot5.setUpdateTime(LocalDateTime.now());
+        slot5.setDeleted(0);
         configs.add(slot5);
         
         TimeSlotConfig slot6 = new TimeSlotConfig();
@@ -85,8 +104,14 @@ public class TimeSlotConfigServiceImpl extends ServiceImpl<TimeSlotConfigMapper,
         slot6.setEndTime("22:30");
         slot6.setPeriod("晚上");
         slot6.setDescription("晚上第二大节（20:50-21:35, 21:45-22:30）");
+        slot6.setCreateTime(LocalDateTime.now());
+        slot6.setUpdateTime(LocalDateTime.now());
+        slot6.setDeleted(0);
         configs.add(slot6);
         
-        this.saveBatch(configs);
+        // 批量插入
+        for (TimeSlotConfig config : configs) {
+            timeSlotConfigMapper.insert(config);
+        }
     }
 } 

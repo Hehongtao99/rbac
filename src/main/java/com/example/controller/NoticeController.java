@@ -1,7 +1,7 @@
 package com.example.controller;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.common.Result;
+import com.example.common.PageResult;
 import com.example.dto.NoticeDTO;
 import com.example.dto.NoticeQueryDTO;
 import com.example.service.NoticeService;
@@ -27,9 +27,9 @@ public class NoticeController {
      * 分页查询通知列表
      */
     @PostMapping("/list")
-    public Result<Page<NoticeVO>> getNoticeList(@RequestBody NoticeQueryDTO queryDTO) {
+    public Result<PageResult<NoticeVO>> getNoticeList(@RequestBody NoticeQueryDTO queryDTO) {
         try {
-            Page<NoticeVO> result = noticeService.getNoticeList(queryDTO);
+            PageResult<NoticeVO> result = noticeService.getNoticeList(queryDTO);
             return Result.success(result);
         } catch (Exception e) {
             return Result.error(e.getMessage());

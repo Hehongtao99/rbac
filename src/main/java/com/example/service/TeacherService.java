@@ -1,11 +1,10 @@
 package com.example.service;
 
-import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.entity.Teacher;
 import com.example.dto.TeacherDTO;
 import com.example.common.Result;
 
-public interface TeacherService extends IService<Teacher> {
+public interface TeacherService {
     Result<Object> getTeacherList(Integer page, Integer size, String keyword);
     Result<Object> createTeacher(TeacherDTO teacherDTO);
     Result<Object> updateTeacher(Long id, TeacherDTO teacherDTO);

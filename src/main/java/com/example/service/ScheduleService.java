@@ -1,6 +1,5 @@
 package com.example.service;
 
-import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.entity.Schedule;
 import com.example.dto.ScheduleDTO;
 import com.example.vo.ScheduleVO;
@@ -8,7 +7,7 @@ import com.example.vo.ScheduleVO;
 import java.util.List;
 import java.util.Map;
 
-public interface ScheduleService extends IService<Schedule> {
+public interface ScheduleService {
     
     /**
      * 添加课程到课程表
@@ -49,6 +48,11 @@ public interface ScheduleService extends IService<Schedule> {
      * 获取可选择的课程列表（教师申请通过的课程）
      */
     List<Map<String, Object>> getAvailableCourses(Long teacherId, String academicYear);
+    
+    /**
+     * 获取指定班级的可用课程列表（显示该班级的剩余课时）
+     */
+    List<Map<String, Object>> getAvailableCoursesForClass(Long teacherId, Long classId, String academicYear);
     
     /**
      * 获取教师分配的班级列表

@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.UserOrganizationMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.example.entity.UserOrganization">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="organization_id" property="organizationId" jdbcType="BIGINT"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, user_id, organization_id, create_time, update_time
+    </sql>
+
+    <!-- 插入 -->
+    <insert id="insert" parameterType="com.example.entity.UserOrganization" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_user_organization (user_id, organization_id, create_time, update_time)
+        VALUES (#{userId}, #{organizationId}, #{createTime}, #{updateTime})
+    </insert>
+
+    <!-- 根据ID删除 -->
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM sys_user_organization WHERE id = #{id}
+    </delete>
+
+    <!-- 根据ID更新 -->
+    <update id="updateById" parameterType="com.example.entity.UserOrganization">
+        UPDATE sys_user_organization
+        <set>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="organizationId != null">organization_id = #{organizationId},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_user_organization
+        WHERE id = #{id}
+    </select>
+
+    <!-- 条件查询列表 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_user_organization
+        <where>
+            <if test="userOrganization.userId != null">
+                AND user_id = #{userOrganization.userId}
+            </if>
+            <if test="userOrganization.organizationId != null">
+                AND organization_id = #{userOrganization.organizationId}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据用户ID查询 -->
+    <select id="selectByUserId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_user_organization
+        WHERE user_id = #{userId}
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据组织ID查询 -->
+    <select id="selectByOrganizationId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_user_organization
+        WHERE organization_id = #{organizationId}
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 删除用户的所有组织关联 -->
+    <delete id="deleteByUserId" parameterType="java.lang.Long">
+        DELETE FROM sys_user_organization WHERE user_id = #{userId}
+    </delete>
+
+    <!-- 统计总数 -->
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_user_organization
+        <where>
+            <if test="userOrganization.userId != null">
+                AND user_id = #{userOrganization.userId}
+            </if>
+            <if test="userOrganization.organizationId != null">
+                AND organization_id = #{userOrganization.organizationId}
+            </if>
+        </where>
+    </select>
+
+</mapper> 

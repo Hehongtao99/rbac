@@ -1,6 +1,5 @@
 package com.example.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.dto.LoginDTO;
 import com.example.dto.RegisterDTO;
 import com.example.entity.Organization;
@@ -22,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import com.example.util.PasswordUtil;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -56,9 +56,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public LoginVO login(LoginDTO loginDTO) {
         // 查询用户
-        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(User::getUsername, loginDTO.getUsername());
-        User user = userMapper.selectOne(wrapper);
+        User user = userMapper.selectByUsername(loginDTO.getUsername());
         
         if (user == null) {
             throw new RuntimeException("用户不存在");
@@ -88,9 +86,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public void register(RegisterDTO registerDTO) {
         // 检查用户名是否存在
-        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(User::getUsername, registerDTO.getUsername());
-        User existUser = userMapper.selectOne(wrapper);
+        User existUser = userMapper.selectByUsername(registerDTO.getUsername());
         
         if (existUser != null) {
             throw new RuntimeException("用户名已存在");
@@ -104,18 +100,21 @@ public class UserServiceImpl implements UserService {
         user.setEmail(registerDTO.getEmail());
         user.setPhone(registerDTO.getPhone());
         user.setStatus(1);
+        user.setCreateTime(LocalDateTime.now());
+        user.setUpdateTime(LocalDateTime.now());
+        user.setDeleted(0);
         
         userMapper.insert(user);
         
         // 分配默认角色（学生角色）
-        LambdaQueryWrapper<Role> roleWrapper = new LambdaQueryWrapper<>();
-        roleWrapper.eq(Role::getRoleCode, "STUDENT");
-        Role userRole = roleMapper.selectOne(roleWrapper);
+        Role userRole = roleMapper.selectByRoleCode("STUDENT");
         
         if (userRole != null) {
             UserRole userRoleEntity = new UserRole();
             userRoleEntity.setUserId(user.getId());
             userRoleEntity.setRoleId(userRole.getId());
+            userRoleEntity.setCreateTime(LocalDateTime.now());
+            userRoleEntity.setDeleted(0);
             userRoleMapper.insert(userRoleEntity);
         }
     }
@@ -123,18 +122,14 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserInfoVO getUserInfo(String username) {
         // 查询用户
-        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(User::getUsername, username);
-        User user = userMapper.selectOne(wrapper);
+        User user = userMapper.selectByUsername(username);
         
         if (user == null) {
             throw new RuntimeException("用户不存在");
         }
         
         // 查询用户角色
-        LambdaQueryWrapper<UserRole> userRoleWrapper = new LambdaQueryWrapper<>();
-        userRoleWrapper.eq(UserRole::getUserId, user.getId());
-        List<UserRole> userRoles = userRoleMapper.selectList(userRoleWrapper);
+        List<UserRole> userRoles = userRoleMapper.selectByUserId(user.getId());
         
         List<String> roles = userRoles.stream()
                 .map(ur -> {
@@ -168,9 +163,7 @@ public class UserServiceImpl implements UserService {
      */
     private List<UserInfoVO.OrganizationInfoVO> getUserOrganizations(Long userId) {
         // 查询用户关联的组织
-        LambdaQueryWrapper<UserOrganization> userOrgWrapper = new LambdaQueryWrapper<>();
-        userOrgWrapper.eq(UserOrganization::getUserId, userId);
-        List<UserOrganization> userOrganizations = userOrganizationMapper.selectList(userOrgWrapper);
+        List<UserOrganization> userOrganizations = userOrganizationMapper.selectByUserId(userId);
         
         if (userOrganizations.isEmpty()) {
             return new ArrayList<>();
@@ -182,10 +175,7 @@ public class UserServiceImpl implements UserService {
                 .collect(Collectors.toList());
         
         // 查询组织信息
-        LambdaQueryWrapper<Organization> orgWrapper = new LambdaQueryWrapper<>();
-        orgWrapper.in(Organization::getId, orgIds)
-                .eq(Organization::getStatus, 1);
-        List<Organization> organizations = organizationMapper.selectList(orgWrapper);
+        List<Organization> organizations = organizationMapper.selectByIdsAndStatus(orgIds, 1);
         
         return organizations.stream().map(org -> {
             UserInfoVO.OrganizationInfoVO orgInfo = new UserInfoVO.OrganizationInfoVO();

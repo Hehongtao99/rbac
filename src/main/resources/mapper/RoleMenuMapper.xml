@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.RoleMenuMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.example.entity.RoleMenu">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="role_id" property="roleId" jdbcType="BIGINT"/>
+        <result column="menu_id" property="menuId" jdbcType="BIGINT"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, role_id, menu_id, create_time, deleted
+    </sql>
+
+    <!-- 插入 -->
+    <insert id="insert" parameterType="com.example.entity.RoleMenu" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_role_menu (role_id, menu_id, create_time, deleted)
+        VALUES (#{roleId}, #{menuId}, #{createTime}, #{deleted})
+    </insert>
+
+    <!-- 根据ID删除 -->
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM sys_role_menu WHERE id = #{id}
+    </delete>
+
+    <!-- 根据ID更新 -->
+    <update id="updateById" parameterType="com.example.entity.RoleMenu">
+        UPDATE sys_role_menu
+        <set>
+            <if test="roleId != null">role_id = #{roleId},</if>
+            <if test="menuId != null">menu_id = #{menuId},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_role_menu
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!-- 条件查询列表 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_role_menu
+        <where>
+            deleted = 0
+            <if test="roleMenu.roleId != null">
+                AND role_id = #{roleMenu.roleId}
+            </if>
+            <if test="roleMenu.menuId != null">
+                AND menu_id = #{roleMenu.menuId}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据角色ID查询 -->
+    <select id="selectByRoleId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_role_menu
+        WHERE role_id = #{roleId} AND deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据角色ID列表查询 -->
+    <select id="selectByRoleIds" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_role_menu
+        WHERE deleted = 0
+        AND role_id IN
+        <foreach collection="roleIds" item="roleId" open="(" separator="," close=")">
+            #{roleId}
+        </foreach>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据菜单ID查询 -->
+    <select id="selectByMenuId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_role_menu
+        WHERE menu_id = #{menuId} AND deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 删除角色的所有菜单权限 -->
+    <delete id="deleteByRoleId" parameterType="java.lang.Long">
+        DELETE FROM sys_role_menu WHERE role_id = #{roleId}
+    </delete>
+
+    <!-- 统计总数 -->
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_role_menu
+        <where>
+            deleted = 0
+            <if test="roleMenu.roleId != null">
+                AND role_id = #{roleMenu.roleId}
+            </if>
+            <if test="roleMenu.menuId != null">
+                AND menu_id = #{roleMenu.menuId}
+            </if>
+        </where>
+    </select>
+
+</mapper> 
