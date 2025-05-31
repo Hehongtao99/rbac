@@ -69,6 +69,18 @@
             {{ row.maxStudents }}人
           </template>
         </el-table-column>
+        <el-table-column label="适用学院" width="120">
+          <template #default="{ row }">
+            <span v-if="row.collegeName">{{ row.collegeName }}</span>
+            <el-tag v-else type="info" size="small">不限制</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="适用专业" width="150">
+          <template #default="{ row }">
+            <span v-if="row.majorName">{{ row.majorName }}</span>
+            <el-tag v-else type="info" size="small">不限制</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="申请状态" width="120">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)">
@@ -140,6 +152,8 @@
         <el-descriptions-item label="学期">{{ applicationDetail.semester }}</el-descriptions-item>
         <el-descriptions-item label="计划人数">{{ applicationDetail.maxStudents }}人</el-descriptions-item>
         <el-descriptions-item label="课程学时">{{ applicationDetail.courseHours }}节</el-descriptions-item>
+        <el-descriptions-item label="适用学院" v-if="applicationDetail.collegeName">{{ applicationDetail.collegeName }}</el-descriptions-item>
+        <el-descriptions-item label="适用专业" v-if="applicationDetail.majorName">{{ applicationDetail.majorName }}</el-descriptions-item>
         <el-descriptions-item label="申请状态">
           <el-tag :type="getStatusType(applicationDetail.status)">
             {{ getStatusText(applicationDetail.status) }}
@@ -290,24 +304,18 @@ export default {
       try {
         loading.value = true
         const params = {
-          page: pagination.currentPage,
-          size: pagination.pageSize,
+          pageNum: pagination.currentPage,
+          pageSize: pagination.pageSize,
           ...filterForm
         }
         
-        console.log('=== 前端发送请求参数 ===', params)
         const response = await getCourseApplicationList(params)
-        console.log('=== 前端收到完整响应 ===', response)
-        console.log('=== 响应数据结构 ===', response.data)
-        console.log('=== records数组 ===', response.data?.records)
         
         if (response.code === 200) {
           applicationList.value = response.data.records || []
           pagination.total = response.data.total || 0
-          console.log('=== 设置到页面的数据 ===', applicationList.value)
-          console.log('=== 总数 ===', pagination.total)
         } else {
-          console.error('响应码不是200:', response.code)
+          ElMessage.error('获取申请列表失败: ' + response.message)
         }
       } catch (error) {
         console.error('获取申请列表失败:', error)

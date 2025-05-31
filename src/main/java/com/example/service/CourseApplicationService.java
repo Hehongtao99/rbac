@@ -6,6 +6,8 @@ import com.example.dto.CourseApplicationQueryDTO;
 import com.example.dto.CourseApplicationReviewDTO;
 import com.example.vo.CourseApplicationVO;
 
+import java.util.List;
+
 public interface CourseApplicationService {
     
     /**
@@ -42,4 +44,9 @@ public interface CourseApplicationService {
      * 根据ID获取申请详情
      */
     CourseApplicationVO getApplicationById(Long id);
+    
+    /**
+     * 获取当前教师已申请的课程模板ID列表
+     */
+    List<Long> getAppliedTemplateIds();
 } 

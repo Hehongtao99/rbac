@@ -86,6 +86,12 @@
         FROM sys_course_application
         <where>
             deleted = 0
+            <if test="courseApplication.templateId != null">
+                AND template_id = #{courseApplication.templateId}
+            </if>
+            <if test="courseApplication.teacherId != null">
+                AND teacher_id = #{courseApplication.teacherId}
+            </if>
             <if test="courseApplication.courseName != null and courseApplication.courseName != ''">
                 AND course_name LIKE CONCAT('%', #{courseApplication.courseName}, '%')
             </if>
@@ -129,6 +135,16 @@
         ORDER BY apply_time DESC
     </select>
 
+    <!-- 检查教师是否已申请过某个模板 -->
+    <select id="selectByTeacherIdAndTemplateId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_course_application
+        WHERE teacher_id = #{teacherId} 
+          AND template_id = #{templateId} 
+          AND deleted = 0
+        ORDER BY apply_time DESC
+    </select>
+
     <!-- 根据教师ID、学年和状态查询 -->
     <select id="selectByTeacherIdAndAcademicYearAndStatus" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
@@ -157,18 +173,27 @@
     </select>
 
     <!-- 根据教师ID分页查询 -->
-    <select id="selectPageByTeacherId" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM sys_course_application
+    <select id="selectPageByTeacherId" resultMap="ExtendedResultMap">
+        SELECT 
+            ca.id, ca.template_id, ca.course_name, ca.teacher_id, ca.teacher_name, 
+            ca.academic_year, ca.semester, ca.max_students, ca.course_hours, ca.remaining_hours,
+            ca.reason, ca.status, ca.apply_time, ca.review_time, ca.reviewer_id, ca.reviewer_name,
+            ca.review_comment, ca.create_time, ca.update_time,
+            ct.college_id, college.org_name AS college_name,
+            ct.major_id, major.org_name AS major_name
+        FROM sys_course_application ca
+        LEFT JOIN sys_course_template ct ON ca.template_id = ct.id
+        LEFT JOIN sys_organization college ON ct.college_id = college.id
+        LEFT JOIN sys_organization major ON ct.major_id = major.id
         <where>
-            teacher_id = #{teacherId} AND deleted = 0
+            ca.teacher_id = #{teacherId} AND ca.deleted = 0
             <if test="keyword != null and keyword != ''">
-                AND (course_name LIKE CONCAT('%', #{keyword}, '%')
-                OR teacher_name LIKE CONCAT('%', #{keyword}, '%')
-                OR reason LIKE CONCAT('%', #{keyword}, '%'))
+                AND (ca.course_name LIKE CONCAT('%', #{keyword}, '%')
+                OR ca.teacher_name LIKE CONCAT('%', #{keyword}, '%')
+                OR ca.reason LIKE CONCAT('%', #{keyword}, '%'))
             </if>
         </where>
-        ORDER BY apply_time DESC
+        ORDER BY ca.apply_time DESC
         LIMIT #{offset}, #{limit}
     </select>
 
@@ -195,6 +220,98 @@
             </if>
             <if test="courseApplication.teacherId != null">
                 AND teacher_id = #{courseApplication.teacherId}
+            </if>
+        </where>
+    </select>
+
+    <!-- 扩展结果映射（包含学院专业信息） -->
+    <resultMap id="ExtendedResultMap" type="com.example.vo.CourseApplicationVO">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="template_id" property="templateId" jdbcType="BIGINT"/>
+        <result column="course_name" property="courseName" jdbcType="VARCHAR"/>
+        <result column="teacher_id" property="teacherId" jdbcType="BIGINT"/>
+        <result column="teacher_name" property="teacherName" jdbcType="VARCHAR"/>
+        <result column="academic_year" property="academicYear" jdbcType="VARCHAR"/>
+        <result column="semester" property="semester" jdbcType="VARCHAR"/>
+        <result column="max_students" property="maxStudents" jdbcType="INTEGER"/>
+        <result column="course_hours" property="courseHours" jdbcType="INTEGER"/>
+        <result column="remaining_hours" property="remainingHours" jdbcType="INTEGER"/>
+        <result column="reason" property="reason" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="apply_time" property="applyTime" jdbcType="TIMESTAMP"/>
+        <result column="review_time" property="reviewTime" jdbcType="TIMESTAMP"/>
+        <result column="reviewer_id" property="reviewerId" jdbcType="BIGINT"/>
+        <result column="reviewer_name" property="reviewerName" jdbcType="VARCHAR"/>
+        <result column="review_comment" property="reviewComment" jdbcType="VARCHAR"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <!-- 学院专业信息 -->
+        <result column="college_id" property="collegeId" jdbcType="BIGINT"/>
+        <result column="college_name" property="collegeName" jdbcType="VARCHAR"/>
+        <result column="major_id" property="majorId" jdbcType="BIGINT"/>
+        <result column="major_name" property="majorName" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <!-- 管理员分页查询（包含学院专业信息） -->
+    <select id="selectPageForAdmin" resultMap="ExtendedResultMap">
+        SELECT 
+            ca.id, ca.template_id, ca.course_name, ca.teacher_id, ca.teacher_name, 
+            ca.academic_year, ca.semester, ca.max_students, ca.course_hours, ca.remaining_hours,
+            ca.reason, ca.status, ca.apply_time, ca.review_time, ca.reviewer_id, ca.reviewer_name,
+            ca.review_comment, ca.create_time, ca.update_time,
+            ct.college_id, college.org_name AS college_name,
+            ct.major_id, major.org_name AS major_name
+        FROM sys_course_application ca
+        LEFT JOIN sys_course_template ct ON ca.template_id = ct.id
+        LEFT JOIN sys_organization college ON ct.college_id = college.id
+        LEFT JOIN sys_organization major ON ct.major_id = major.id
+        <where>
+            ca.deleted = 0
+            <if test="keyword != null and keyword != ''">
+                AND (ca.course_name LIKE CONCAT('%', #{keyword}, '%')
+                OR ca.teacher_name LIKE CONCAT('%', #{keyword}, '%')
+                OR ca.reason LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="status != null">
+                AND ca.status = #{status}
+            </if>
+            <if test="academicYear != null and academicYear != ''">
+                AND ca.academic_year = #{academicYear}
+            </if>
+            <if test="semester != null and semester != ''">
+                AND ca.semester = #{semester}
+            </if>
+            <if test="teacherId != null">
+                AND ca.teacher_id = #{teacherId}
+            </if>
+        </where>
+        ORDER BY ca.status ASC, ca.apply_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 管理员查询总数 -->
+    <select id="selectCountForAdmin" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_course_application ca
+        LEFT JOIN sys_course_template ct ON ca.template_id = ct.id
+        <where>
+            ca.deleted = 0
+            <if test="keyword != null and keyword != ''">
+                AND (ca.course_name LIKE CONCAT('%', #{keyword}, '%')
+                OR ca.teacher_name LIKE CONCAT('%', #{keyword}, '%')
+                OR ca.reason LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="status != null">
+                AND ca.status = #{status}
+            </if>
+            <if test="academicYear != null and academicYear != ''">
+                AND ca.academic_year = #{academicYear}
+            </if>
+            <if test="semester != null and semester != ''">
+                AND ca.semester = #{semester}
+            </if>
+            <if test="teacherId != null">
+                AND ca.teacher_id = #{teacherId}
             </if>
         </where>
     </select>

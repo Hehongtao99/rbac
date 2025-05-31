@@ -13,6 +13,7 @@ import com.example.vo.OrganizationVO;
 import com.example.vo.UserWithRoleVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -345,7 +346,8 @@ public class AdminServiceImpl implements AdminService {
     @Override
     public Result<List<MenuVO>> getAllMenus() {
         try {
-            List<Menu> menus = menuMapper.selectByTypeAndStatus("MENU", 1);
+            // 获取所有启用的菜单和按钮权限
+            List<Menu> menus = menuMapper.selectByTypeAndStatus(null, 1);
             List<MenuVO> menuVOs = menus.stream().map(menu -> {
                 MenuVO menuVO = new MenuVO();
                 menuVO.setId(menu.getId());
@@ -382,6 +384,7 @@ public class AdminServiceImpl implements AdminService {
     }
     
     @Override
+    @Transactional
     public Result<Void> assignMenu(Long roleId, List<Long> menuIds) {
         try {
             // 检查角色是否存在
@@ -394,11 +397,15 @@ public class AdminServiceImpl implements AdminService {
             roleMenuMapper.deleteByRoleId(roleId);
             
             // 添加新的角色菜单关联
-            for (Long menuId : menuIds) {
-                RoleMenu roleMenu = new RoleMenu();
-                roleMenu.setRoleId(roleId);
-                roleMenu.setMenuId(menuId);
-                roleMenuMapper.insert(roleMenu);
+            if (menuIds != null && !menuIds.isEmpty()) {
+                for (Long menuId : menuIds) {
+                    RoleMenu roleMenu = new RoleMenu();
+                    roleMenu.setRoleId(roleId);
+                    roleMenu.setMenuId(menuId);
+                    roleMenu.setCreateTime(LocalDateTime.now());
+                    roleMenu.setDeleted(0);
+                    roleMenuMapper.insert(roleMenu);
+                }
             }
             
             return Result.success();

@@ -14,25 +14,27 @@ public class CourseTemplateVO {
     
     private String templateName;
     
-    private String templateCode;
-    
     private String description;
     
-    private Integer totalHours;
-    
-    private Integer credits;
-    
-    private String courseType;
+    private Integer courseHours;
     
     private String academicYear;
     
     private String semester;
     
+    private Integer maxStudents;
+    
+    private Long collegeId;
+    
+    private Long majorId;
+    
+    private String collegeName;
+    
+    private String majorName;
+    
     private Integer status;
     
     private String statusName;
-    
-    private Boolean enabled; // 是否启用
     
     private LocalDateTime createTime;
     

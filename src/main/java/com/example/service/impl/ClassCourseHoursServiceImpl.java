@@ -116,11 +116,13 @@ public class ClassCourseHoursServiceImpl implements ClassCourseHoursService {
             }
             
             Map<String, Object> map = new HashMap<>();
-            map.put("value", application.getId());
-            map.put("label", application.getCourseName() + "（该班级剩余" + remainingHours + "课时）");
+            map.put("id", application.getId());
+            map.put("courseName", application.getCourseName());
             map.put("courseHours", application.getCourseHours());
             map.put("remainingHours", remainingHours);
-            map.put("courseName", application.getCourseName());
+            map.put("maxStudents", application.getMaxStudents());
+            map.put("academicYear", application.getAcademicYear());
+            map.put("semester", application.getSemester());
             map.put("classId", classId);
             return map;
         }).collect(Collectors.toList());

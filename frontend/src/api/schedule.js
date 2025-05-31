@@ -46,8 +46,12 @@ export default {
 
   // 检查时间冲突 - 后端从JWT获取teacherId
   checkTimeConflict(academicYear, weekNumber, dayOfWeek, timeSlot, classId) {
-    return request.get(`${API_BASE_URL}/check-conflict`, {
-      params: { academicYear, weekNumber, dayOfWeek, timeSlot, classId }
+    return request.post(`${API_BASE_URL}/check-conflict`, {
+      academicYear,
+      weekNumber,
+      dayOfWeek,
+      timeSlot,
+      classId
     })
   },
 

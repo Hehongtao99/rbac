@@ -300,8 +300,8 @@ export default {
     },
 
     getCellCourses(timeSlot, dayOfWeek) {
-      const dayName = this.weekDays.find(d => d.value === dayOfWeek)?.label
-      const daySchedules = this.weeklyGridData[dayName] || []
+      const dayKey = String(dayOfWeek)
+      const daySchedules = this.weeklyGridData[dayKey] || []
       return daySchedules.filter(s => s.timeSlot === timeSlot)
     },
 

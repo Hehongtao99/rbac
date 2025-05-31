@@ -20,6 +20,18 @@
       <el-table-column prop="academicYear" label="学年" />
       <el-table-column prop="semester" label="学期" />
       <el-table-column prop="maxStudents" label="计划人数" width="100" />
+      <el-table-column label="适用学院" width="120">
+        <template #default="scope">
+          <span v-if="scope.row.collegeName">{{ scope.row.collegeName }}</span>
+          <el-tag v-else type="info" size="small">不限制</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="适用专业" width="150">
+        <template #default="scope">
+          <span v-if="scope.row.majorName">{{ scope.row.majorName }}</span>
+          <el-tag v-else type="info" size="small">不限制</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column prop="status" label="状态" width="100">
         <template #default="scope">
           <el-tag :type="getStatusType(scope.row.status)">
@@ -75,6 +87,8 @@
         <el-descriptions-item label="学年">{{ applicationDetail.academicYear }}</el-descriptions-item>
         <el-descriptions-item label="学期">{{ applicationDetail.semester }}</el-descriptions-item>
         <el-descriptions-item label="计划人数">{{ applicationDetail.maxStudents }}人</el-descriptions-item>
+        <el-descriptions-item label="适用学院" v-if="applicationDetail.collegeName">{{ applicationDetail.collegeName }}</el-descriptions-item>
+        <el-descriptions-item label="适用专业" v-if="applicationDetail.majorName">{{ applicationDetail.majorName }}</el-descriptions-item>
         <el-descriptions-item label="状态">
           <el-tag :type="getStatusType(applicationDetail.status)">
             {{ getStatusText(applicationDetail.status) }}
@@ -161,8 +175,8 @@ export default {
     const loadApplications = async () => {
       try {
         const response = await getCourseApplicationListForAdmin({
-          page: currentPage.value,
-          size: pageSize.value,
+          pageNum: currentPage.value,
+          pageSize: pageSize.value,
           keyword: searchKeyword.value
         })
         if (response.code === 200) {

@@ -2,7 +2,7 @@ package com.example.controller;
 
 import com.example.common.PageResult;
 import com.example.common.Result;
-import com.example.dto.CourseDTO;
+import com.example.dto.CourseTemplateDTO;
 import com.example.dto.CourseTemplatePageDTO;
 import com.example.service.CourseTemplateService;
 import com.example.vo.CourseTemplateVO;
@@ -34,28 +34,50 @@ public class CourseTemplateController {
      */
     @PostMapping("/enabled")
     public Result<PageResult<CourseTemplateVO>> getEnabledTemplateList(@RequestBody CourseTemplatePageDTO pageDTO) {
-        // 设置只查询启用的模板
-        pageDTO.setEnabledOnly(true);
         PageResult<CourseTemplateVO> result = courseTemplateService.getEnabledTemplateList(pageDTO);
         return Result.success(result);
+    }
+
+    /**
+     * 获取教师可申请的课程模板列表（根据教师的学院专业筛选）
+     */
+    @PostMapping("/available-for-teacher")
+    public Result<PageResult<CourseTemplateVO>> getAvailableTemplatesForTeacher(@RequestBody CourseTemplatePageDTO pageDTO) {
+        try {
+            PageResult<CourseTemplateVO> result = courseTemplateService.getAvailableTemplatesForTeacher(pageDTO);
+            return Result.success(result);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
     }
 
     /**
      * 创建课程模板
      */
     @PostMapping
-    public Result<Void> createTemplate(@RequestBody CourseDTO templateDTO) {
-        courseTemplateService.createTemplate(templateDTO);
-        return Result.success();
+    public Result<Void> createTemplate(@RequestBody CourseTemplateDTO templateDTO) {
+        try {
+            System.out.println("接收到的课程模板数据: " + templateDTO);
+            courseTemplateService.createTemplate(templateDTO);
+            return Result.success();
+        } catch (Exception e) {
+            System.err.println("创建课程模板失败: " + e.getMessage());
+            e.printStackTrace();
+            return Result.error(e.getMessage());
+        }
     }
 
     /**
      * 更新课程模板
      */
     @PutMapping("/{id}")
-    public Result<Void> updateTemplate(@PathVariable Long id, @RequestBody CourseDTO templateDTO) {
-        courseTemplateService.updateTemplate(id, templateDTO);
-        return Result.success();
+    public Result<Void> updateTemplate(@PathVariable Long id, @RequestBody CourseTemplateDTO templateDTO) {
+        try {
+            courseTemplateService.updateTemplate(id, templateDTO);
+            return Result.success();
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
     }
 
     /**
@@ -63,8 +85,12 @@ public class CourseTemplateController {
      */
     @DeleteMapping("/{id}")
     public Result<Void> deleteTemplate(@PathVariable Long id) {
-        courseTemplateService.deleteTemplate(id);
-        return Result.success();
+        try {
+            courseTemplateService.deleteTemplate(id);
+            return Result.success();
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
     }
 
     /**

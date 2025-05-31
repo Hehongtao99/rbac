@@ -108,7 +108,29 @@
           show-checkbox
           node-key="id"
           class="menu-tree"
-        />
+        >
+          <template #default="{ node, data }">
+            <div class="tree-node-content">
+              <span class="node-label">{{ data.menuName }}</span>
+              <el-tag 
+                v-if="data.menuType === 'BUTTON'" 
+                type="info" 
+                size="small" 
+                class="node-type-tag"
+              >
+                按钮
+              </el-tag>
+              <el-tag 
+                v-else 
+                type="success" 
+                size="small" 
+                class="node-type-tag"
+              >
+                菜单
+              </el-tag>
+            </div>
+          </template>
+        </el-tree>
       </div>
       <template #footer>
         <el-button @click="closeAssignDialog">取消</el-button>
@@ -229,14 +251,14 @@ export default {
       
       const traverse = (nodeList) => {
         nodeList.forEach(node => {
-          if (selectedIds.includes(node.id)) {
-            if (!node.children || node.children.length === 0) {
-              // 叶子节点，直接添加
+          if (!node.children || node.children.length === 0) {
+            // 叶子节点，检查是否被选中
+            if (selectedIds.includes(node.id)) {
               leafNodes.push(node.id)
-            } else {
-              // 有子节点，递归处理子节点
-              traverse(node.children)
             }
+          } else {
+            // 有子节点，递归处理子节点（不管当前节点是否被选中）
+            traverse(node.children)
           }
         })
       }
@@ -321,21 +343,34 @@ export default {
 
     // 分配权限
     const handleAssignMenu = async (row) => {
-      assignMenuForm.roleId = row.id
-      assignMenuForm.roleName = row.roleName
-      
-      // 获取菜单树和角色已分配的菜单
-      await fetchMenuTree()
-      await fetchRoleMenus(row.id)
-      
-      assignMenuVisible.value = true
+      try {
+        assignMenuForm.roleId = row.id
+        assignMenuForm.roleName = row.roleName
+        
+        // 先获取菜单树数据
+        await fetchMenuTree()
+        
+        // 确保菜单树数据加载完成后再获取角色已分配的菜单
+        if (menuTreeData.value.length > 0) {
+          await fetchRoleMenus(row.id)
+        } else {
+          ElMessage.error('菜单数据加载失败')
+          return
+        }
+        
+        // 打开对话框
+        assignMenuVisible.value = true
+      } catch (error) {
+        console.error('准备分配权限失败:', error)
+        ElMessage.error('准备分配权限失败')
+      }
     }
 
     // 对话框打开后的回调
     const onDialogOpened = async () => {
       // 等待DOM更新后设置选中的节点
       await nextTick()
-      if (menuTreeRef.value) {
+      if (menuTreeRef.value && menuTreeData.value.length > 0) {
         // 先清空所有选中状态
         menuTreeRef.value.setCheckedKeys([])
         
@@ -343,6 +378,8 @@ export default {
         if (checkedMenuIds.value.length > 0) {
           // 只选中叶子节点，让Element Plus自动处理父节点状态
           const leafNodeIds = getLeafNodes(menuTreeData.value, checkedMenuIds.value)
+          
+          // 设置选中的节点
           menuTreeRef.value.setCheckedKeys(leafNodeIds)
         }
       }
@@ -355,7 +392,11 @@ export default {
       if (menuTreeRef.value) {
         menuTreeRef.value.setCheckedKeys([])
       }
+      // 清空数据
       checkedMenuIds.value = []
+      menuTreeData.value = []
+      assignMenuForm.roleId = null
+      assignMenuForm.roleName = ''
     }
 
     // 确认分配权限
@@ -363,14 +404,28 @@ export default {
       try {
         assignLoading.value = true
         
+        // 验证roleId是否有效
+        if (!assignMenuForm.roleId) {
+          ElMessage.error('角色ID无效，请重新打开权限分配对话框')
+          return
+        }
+        
         // 获取选中的菜单ID
         const checkedKeys = menuTreeRef.value.getCheckedKeys()
         const halfCheckedKeys = menuTreeRef.value.getHalfCheckedKeys()
         const allCheckedKeys = [...checkedKeys, ...halfCheckedKeys]
         
+        if (allCheckedKeys.length === 0) {
+          ElMessage.warning('请至少选择一个权限')
+          return
+        }
+        
+        // 保存roleId，因为closeAssignDialog会清空它
+        const currentRoleId = assignMenuForm.roleId
+        
         await request.post('/admin/assign-menu', allCheckedKeys, {
           params: {
-            roleId: assignMenuForm.roleId
+            roleId: currentRoleId
           }
         })
         
@@ -477,22 +532,38 @@ export default {
 
 .assign-menu-content {
   max-height: 400px;
-  overflow-y: auto;
 }
 
 .role-info {
   margin-bottom: 15px;
   padding: 10px;
-  background-color: #f5f5f5;
+  background-color: #f5f7fa;
   border-radius: 4px;
-  font-weight: 600;
+  font-weight: bold;
+  color: #606266;
 }
 
 .menu-tree {
-  border: 1px solid #e6e6e6;
+  border: 1px solid #dcdfe6;
   border-radius: 4px;
   padding: 10px;
-  max-height: 300px;
+  max-height: 350px;
   overflow-y: auto;
+}
+
+.tree-node-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.node-label {
+  flex: 1;
+  margin-right: 10px;
+}
+
+.node-type-tag {
+  margin-left: 5px;
 }
 </style> 

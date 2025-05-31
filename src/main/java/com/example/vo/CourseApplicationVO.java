@@ -12,17 +12,23 @@ public class CourseApplicationVO {
     
     private Long id;
     
+    private Long templateId;  // 课程模板ID
+    
     private String courseName;
     
     private String courseDescription;
     
-    private Integer totalHours;
+    private Integer courseHours;  // 修改为courseHours，与数据库一致
+    
+    private Integer remainingHours;  // 剩余课时
+    
+    private Integer maxStudents;  // 计划人数
     
     private String academicYear;
     
     private String semester;
     
-    private String applicationReason;
+    private String reason;  // 修改为reason，与数据库一致
     
     private Integer status;
     
@@ -34,7 +40,20 @@ public class CourseApplicationVO {
     
     private String teacherName;
     
-    private LocalDateTime applicationTime;
+    private Long reviewerId;  // 审核人ID
+    
+    private String reviewerName;  // 审核人姓名
+    
+    // 学院专业信息（从课程模板关联获取）
+    private Long collegeId;
+    
+    private String collegeName;
+    
+    private Long majorId;
+    
+    private String majorName;
+    
+    private LocalDateTime applyTime;  // 修改为applyTime，与数据库一致
     
     private LocalDateTime reviewTime;
     

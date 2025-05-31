@@ -59,4 +59,12 @@ export const getCourseApplicationById = (id) => {
     url: `/course-applications/${id}`,
     method: 'get'
   })
+}
+
+// 获取当前教师已申请的课程模板ID列表
+export const getAppliedTemplateIds = () => {
+  return request({
+    url: '/course-applications/applied-templates',
+    method: 'get'
+  })
 } 

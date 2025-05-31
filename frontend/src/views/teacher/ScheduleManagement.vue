@@ -571,10 +571,21 @@ export default {
         }
         
         if (response.code === 200) {
-          this.availableCourses = response.data || []
+          // 转换数据格式为前端期望的格式
+          this.availableCourses = (response.data || []).map(course => ({
+            value: course.id, // 统一使用id字段作为value
+            label: `${course.courseName} (剩余${course.remainingHours || course.courseHours}课时)`,
+            courseName: course.courseName,
+            id: course.id,
+            remainingHours: course.remainingHours || course.courseHours,
+            courseHours: course.courseHours
+          }))
+          
+          console.log('加载的可用课程:', this.availableCourses)
         }
       } catch (error) {
         console.error('获取可选课程失败:', error)
+        ElMessage.error('获取可选课程失败')
       }
     },
 
@@ -614,23 +625,23 @@ export default {
     },
 
     getCellCourse(timeSlot, dayOfWeek) {
-      const dayName = this.weekDays.find(d => d.value === dayOfWeek)?.label
-      const daySchedules = this.scheduleData[dayName] || []
+      const dayKey = String(dayOfWeek) // 使用数字键而不是中文名称
+      const daySchedules = this.scheduleData[dayKey] || []
       return daySchedules.find(s => s.timeSlot === timeSlot)
     },
 
     // 获取某个时间段的所有课程（用于显示所有班级时）
     getCellCourses(timeSlot, dayOfWeek) {
-      const dayName = this.weekDays.find(d => d.value === dayOfWeek)?.label
-      const daySchedules = this.scheduleData[dayName] || []
+      const dayKey = String(dayOfWeek) // 使用数字键而不是中文名称
+      const daySchedules = this.scheduleData[dayKey] || []
       return daySchedules.filter(s => s.timeSlot === timeSlot)
     },
 
     // 检查是否有其他班级的课程
     hasOtherClassCourse(timeSlot, dayOfWeek) {
       if (!this.filterForm.classId) return false
-      const dayName = this.weekDays.find(d => d.value === dayOfWeek)?.label
-      const daySchedules = this.scheduleData[dayName] || []
+      const dayKey = String(dayOfWeek) // 使用数字键而不是中文名称
+      const daySchedules = this.scheduleData[dayKey] || []
       const otherClassCourses = daySchedules.filter(s => s.timeSlot === timeSlot && s.classId !== this.filterForm.classId)
       return otherClassCourses.length > 0
     },
@@ -638,8 +649,8 @@ export default {
     // 获取其他班级的课程
     getOtherClassCourses(timeSlot, dayOfWeek) {
       if (!this.filterForm.classId) return []
-      const dayName = this.weekDays.find(d => d.value === dayOfWeek)?.label
-      const daySchedules = this.scheduleData[dayName] || []
+      const dayKey = String(dayOfWeek) // 使用数字键而不是中文名称
+      const daySchedules = this.scheduleData[dayKey] || []
       return daySchedules.filter(s => s.timeSlot === timeSlot && s.classId !== this.filterForm.classId)
     },
 
@@ -648,6 +659,9 @@ export default {
         ElMessage.warning('您还没有分配到任何班级，无法添加课程')
         return
       }
+      
+      console.log('=== 点击单元格 ===')
+      console.log('时间段:', timeSlot, '星期:', dayOfWeek)
       
       // 检查该时间段是否已有课程
       if (this.filterForm.classId === null) {
@@ -676,22 +690,42 @@ export default {
         this.addForm.classId = this.filterForm.classId
       }
       
-      // 打开添加课程对话框
+      // 重置表单数据
       this.addForm.dayOfWeek = dayOfWeek
       this.addForm.timeSlot = timeSlot
       this.addForm.courseId = null
-      this.showAddDialog = true
       
-      // 当打开添加对话框时，如果已选择班级，则加载该班级的可用课程
+      console.log('设置表单数据:', {
+        dayOfWeek: this.addForm.dayOfWeek,
+        timeSlot: this.addForm.timeSlot,
+        classId: this.addForm.classId,
+        courseId: this.addForm.courseId
+      })
+      
+      // 先加载课程数据，再打开对话框
       if (this.addForm.classId) {
-        this.loadAvailableCourses(this.addForm.classId)
+        console.log('预加载班级课程，班级ID:', this.addForm.classId)
+        await this.loadAvailableCourses(this.addForm.classId)
+      } else {
+        console.log('预加载所有课程')
+        await this.loadAvailableCourses()
       }
+      
+      // 打开添加课程对话框
+      this.showAddDialog = true
+      console.log('打开添加对话框')
     },
 
     async addSingleCourse() {
       if (!this.$refs.addFormRef) return
       
       try {
+        console.log('=== 添加课程调试信息 ===')
+        console.log('表单数据:', this.addForm)
+        console.log('可用课程列表:', this.availableCourses)
+        console.log('选中的课程ID:', this.addForm.courseId)
+        console.log('选中的班级ID:', this.addForm.classId)
+        
         await this.$refs.addFormRef.validate()
         
         // 在添加前再次检查冲突
@@ -713,17 +747,32 @@ export default {
         const selectedClass = this.teacherClasses.find(c => c.id === this.addForm.classId)
         const selectedCourse = this.availableCourses.find(c => c.value === this.addForm.courseId)
         
+        console.log('找到的班级:', selectedClass)
+        console.log('找到的课程:', selectedCourse)
+        
+        if (!selectedCourse) {
+          ElMessage.error('未找到选中的课程，请重新选择')
+          return
+        }
+        
+        if (!selectedClass) {
+          ElMessage.error('未找到选中的班级，请重新选择')
+          return
+        }
+        
         const data = {
           courseId: this.addForm.courseId,
-          courseName: selectedCourse?.courseName || '',
+          courseName: selectedCourse.courseName,
           classId: this.addForm.classId,
-          className: selectedClass?.name || '',
+          className: selectedClass.name,
           academicYear: this.filterForm.academicYear,
           weekNumber: this.filterForm.weekNumber,
           dayOfWeek: this.addForm.dayOfWeek,
           timeSlot: this.addForm.timeSlot,
           reducedHours: 1
         }
+        
+        console.log('提交的数据:', data)
         
         const response = await scheduleApi.addCourseToSchedule(data)
         if (response.code === 200) {
@@ -839,35 +888,59 @@ export default {
     },
 
     onClassChange() {
+      console.log('=== 班级选择改变 ===')
+      console.log('选中的班级ID:', this.addForm.classId)
+      
       const selectedClass = this.teacherClasses.find(c => c.id === this.addForm.classId)
       if (selectedClass) {
         this.addForm.className = selectedClass.name
+        console.log('选中的班级名称:', selectedClass.name)
       }
       
       // 重置课程选择
       this.addForm.courseId = null
+      console.log('重置课程选择为null')
+      
+      // 清除表单验证错误
+      if (this.$refs.addFormRef) {
+        this.$refs.addFormRef.clearValidate('courseId')
+      }
       
       // 重新加载该班级的可用课程
       if (this.addForm.classId) {
+        console.log('重新加载班级课程，班级ID:', this.addForm.classId)
         this.loadAvailableCourses(this.addForm.classId)
       } else {
+        console.log('重新加载所有课程')
         this.loadAvailableCourses()
       }
     },
 
     onQuickAddClassChange() {
+      console.log('=== 快速添加班级选择改变 ===')
+      console.log('选中的班级ID:', this.quickAddForm.classId)
+      
       const selectedClass = this.teacherClasses.find(c => c.id === this.quickAddForm.classId)
       if (selectedClass) {
         this.quickAddForm.className = selectedClass.name
+        console.log('选中的班级名称:', selectedClass.name)
       }
       
       // 重置课程选择
       this.quickAddForm.courseId = null
+      console.log('重置快速添加课程选择为null')
+      
+      // 清除表单验证错误
+      if (this.$refs.quickAddFormRef) {
+        this.$refs.quickAddFormRef.clearValidate('courseId')
+      }
       
       // 重新加载该班级的可用课程
       if (this.quickAddForm.classId) {
+        console.log('重新加载班级课程，班级ID:', this.quickAddForm.classId)
         this.loadAvailableCourses(this.quickAddForm.classId)
       } else {
+        console.log('重新加载所有课程')
         this.loadAvailableCourses()
       }
     },

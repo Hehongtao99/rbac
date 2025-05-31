@@ -10,6 +10,8 @@ import com.example.vo.CourseApplicationVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * 课程申请控制器
  */
@@ -44,8 +46,15 @@ public class CourseApplicationController {
      */
     @PostMapping
     public Result<Void> createApplication(@RequestBody CourseApplicationDTO applicationDTO) {
-        courseApplicationService.createApplication(applicationDTO);
-        return Result.success();
+        try {
+            System.out.println("接收到课程申请数据: " + applicationDTO);
+            courseApplicationService.createApplication(applicationDTO);
+            return Result.success();
+        } catch (Exception e) {
+            System.err.println("创建课程申请失败: " + e.getMessage());
+            e.printStackTrace();
+            return Result.error(e.getMessage());
+        }
     }
 
     /**
@@ -53,8 +62,12 @@ public class CourseApplicationController {
      */
     @PutMapping("/{id}")
     public Result<Void> updateApplication(@PathVariable Long id, @RequestBody CourseApplicationDTO applicationDTO) {
-        courseApplicationService.updateApplication(id, applicationDTO);
-        return Result.success();
+        try {
+            courseApplicationService.updateApplication(id, applicationDTO);
+            return Result.success();
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
     }
 
     /**
@@ -62,8 +75,12 @@ public class CourseApplicationController {
      */
     @PutMapping("/{id}/review")
     public Result<Void> reviewApplication(@PathVariable Long id, @RequestBody CourseApplicationReviewDTO reviewDTO) {
-        courseApplicationService.reviewApplication(id, reviewDTO);
-        return Result.success();
+        try {
+            courseApplicationService.reviewApplication(id, reviewDTO);
+            return Result.success();
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
     }
 
     /**
@@ -71,8 +88,25 @@ public class CourseApplicationController {
      */
     @DeleteMapping("/{id}")
     public Result<Void> deleteApplication(@PathVariable Long id) {
-        courseApplicationService.deleteApplication(id);
-        return Result.success();
+        try {
+            courseApplicationService.deleteApplication(id);
+            return Result.success();
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 获取当前教师已申请的课程模板ID列表
+     */
+    @GetMapping("/applied-templates")
+    public Result<List<Long>> getAppliedTemplateIds() {
+        try {
+            List<Long> appliedTemplateIds = courseApplicationService.getAppliedTemplateIds();
+            return Result.success(appliedTemplateIds);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
     }
 
     /**
@@ -80,7 +114,11 @@ public class CourseApplicationController {
      */
     @GetMapping("/{id}")
     public Result<CourseApplicationVO> getApplicationById(@PathVariable Long id) {
-        CourseApplicationVO application = courseApplicationService.getApplicationById(id);
-        return Result.success(application);
+        try {
+            CourseApplicationVO application = courseApplicationService.getApplicationById(id);
+            return Result.success(application);
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
     }
 } 

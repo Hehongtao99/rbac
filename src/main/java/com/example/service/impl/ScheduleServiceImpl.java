@@ -440,9 +440,16 @@ public class ScheduleServiceImpl implements ScheduleService {
         List<Schedule> schedules = scheduleMapper.selectList(querySchedule);
         List<ScheduleVO> scheduleVOs = schedules.stream().map(this::convertToVO).collect(Collectors.toList());
         
-        // 按星期分组
-        Map<String, List<ScheduleVO>> weeklyData = scheduleVOs.stream()
-                .collect(Collectors.groupingBy(ScheduleVO::getDayOfWeekName));
+        // 按星期分组 - 使用数字键而不是中文名称
+        Map<String, List<ScheduleVO>> weeklyData = new HashMap<>();
+        for (int i = 1; i <= 7; i++) {
+            weeklyData.put(String.valueOf(i), new ArrayList<>());
+        }
+        
+        scheduleVOs.forEach(schedule -> {
+            String dayKey = String.valueOf(schedule.getDayOfWeek());
+            weeklyData.get(dayKey).add(schedule);
+        });
         
         // 获取所有教师列表
         List<Map<String, Object>> teachers = schedules.stream()
