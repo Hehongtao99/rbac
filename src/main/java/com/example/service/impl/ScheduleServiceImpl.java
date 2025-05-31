@@ -71,10 +71,10 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
             throw new RuntimeException("您没有权限为该班级安排课程");
         }
         
-        // 检查时间冲突 - 使用JWT获取的teacherId和班级ID
+        // 检查时间冲突 - 检查该教师在该时间段是否已有任何班级的课程
         boolean conflict = checkTimeConflict(teacherId, 
                 scheduleDTO.getAcademicYear(), scheduleDTO.getWeekNumber(), 
-                scheduleDTO.getDayOfWeek(), scheduleDTO.getTimeSlot(), scheduleDTO.getClassId());
+                scheduleDTO.getDayOfWeek(), scheduleDTO.getTimeSlot(), null); // 传入null检查所有班级
         if (conflict) {
             throw new RuntimeException("该时间段已有课程安排，无法添加");
         }
@@ -165,10 +165,41 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
             throw new RuntimeException("您没有权限为该班级安排课程");
         }
         
+        // 如果要更新时间信息，需要检查新时间是否冲突
+        if (scheduleDTO.getDayOfWeek() != null && scheduleDTO.getTimeSlot() != null) {
+            // 检查新时间是否与现有课程冲突（排除当前课程）
+            LambdaQueryWrapper<Schedule> conflictWrapper = new LambdaQueryWrapper<>();
+            conflictWrapper.eq(Schedule::getTeacherId, currentUser.getId())
+                          .eq(Schedule::getAcademicYear, schedule.getAcademicYear())
+                          .eq(Schedule::getWeekNumber, schedule.getWeekNumber())
+                          .eq(Schedule::getDayOfWeek, scheduleDTO.getDayOfWeek())
+                          .eq(Schedule::getTimeSlot, scheduleDTO.getTimeSlot())
+                          .ne(Schedule::getId, scheduleId); // 排除当前课程
+            
+            // 检查该教师在该时间段是否已经有任何班级的课程（不限制班级）
+            // 这样可以防止同一教师在同一时间段教授多个班级
+            
+            if (this.count(conflictWrapper) > 0) {
+                throw new RuntimeException("目标时间段已有课程安排，无法移动");
+            }
+            
+            // 更新时间信息
+            schedule.setDayOfWeek(scheduleDTO.getDayOfWeek());
+            schedule.setTimeSlot(scheduleDTO.getTimeSlot());
+        }
+        
         // 更新班级信息
         if (scheduleDTO.getClassId() != null) {
             schedule.setClassId(scheduleDTO.getClassId());
             schedule.setClassName(scheduleDTO.getClassName());
+        }
+        
+        // 更新学年和周次信息（如果提供）
+        if (scheduleDTO.getAcademicYear() != null) {
+            schedule.setAcademicYear(scheduleDTO.getAcademicYear());
+        }
+        if (scheduleDTO.getWeekNumber() != null) {
+            schedule.setWeekNumber(scheduleDTO.getWeekNumber());
         }
         
         this.updateById(schedule);
@@ -236,6 +267,7 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
         if (classId != null) {
             wrapper.eq(Schedule::getClassId, classId);
         }
+        // 当classId为null时，不添加班级条件，返回该教师所有班级的课程
         
         wrapper.orderBy(true, true, Schedule::getDayOfWeek)
                .orderBy(true, true, Schedule::getTimeSlot);
@@ -314,9 +346,11 @@ public class ScheduleServiceImpl extends ServiceImpl<ScheduleMapper, Schedule> i
                .eq(Schedule::getTimeSlot, timeSlot);
         
         // 如果指定了班级，检查该班级的时间冲突
+        // 如果没有指定班级（classId为null），检查该教师在该时间段是否已经有任何班级的课程
         if (classId != null) {
             wrapper.eq(Schedule::getClassId, classId);
         }
+        // 当classId为null时，不添加班级条件，这样会检查该教师在该时间段的所有班级课程
         
         return this.count(wrapper) > 0;
     }

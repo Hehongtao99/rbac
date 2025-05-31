@@ -1,9 +1,23 @@
 <template>
   <div class="schedule-management">
-    <el-card class="box-card">
+    <!-- 页面加载状态 -->
+    <div v-if="pageLoading" class="loading-container" v-loading="true" element-loading-text="正在加载课程表数据...">
+      <div style="height: 400px;"></div>
+    </div>
+
+    <!-- 主要内容 -->
+    <el-card v-else class="box-card">
       <template #header>
         <div class="card-header">
-          <span>课程表管理</span>
+          <span>课程表管理 
+            <span v-if="filterForm.weekNumber" class="header-info">
+              - {{ filterForm.academicYear }} 第{{ filterForm.weekNumber }}周
+              <span v-if="filterForm.classId">
+                ({{ getSelectedClassName() }})
+              </span>
+              <span v-else>(所有班级)</span>
+            </span>
+          </span>
           <div class="header-controls">
             <el-button type="primary" @click="showQuickAdd = true">快速添加</el-button>
           </div>
@@ -14,13 +28,13 @@
       <div class="filter-section">
         <el-form :model="filterForm" inline>
           <el-form-item label="学年">
-            <el-select v-model="filterForm.academicYear" placeholder="选择学年" @change="loadSchedule" style="width: 150px;">
+            <el-select v-model="filterForm.academicYear" placeholder="选择学年" @change="onFilterChange" style="width: 150px;">
               <el-option label="2024-2025" value="2024-2025"></el-option>
               <el-option label="2023-2024" value="2023-2024"></el-option>
             </el-select>
           </el-form-item>
           <el-form-item label="班级">
-            <el-select v-model="filterForm.classId" placeholder="选择班级" @change="loadSchedule" clearable style="width: 200px;">
+            <el-select v-model="filterForm.classId" placeholder="选择班级" @change="onFilterChange" clearable style="width: 200px;">
               <el-option label="所有班级" :value="null"></el-option>
               <el-option 
                 v-for="clazz in teacherClasses" 
@@ -31,7 +45,7 @@
             </el-select>
           </el-form-item>
           <el-form-item label="周次">
-            <el-select v-model="filterForm.weekNumber" placeholder="选择周次" @change="loadSchedule" style="width: 120px;">
+            <el-select v-model="filterForm.weekNumber" placeholder="选择周次" @change="onFilterChange" style="width: 120px;">
               <el-option 
                 v-for="week in 20" 
                 :key="week" 
@@ -41,6 +55,23 @@
             </el-select>
           </el-form-item>
         </el-form>
+        
+        <!-- 班级颜色图例 -->
+        <div v-if="filterForm.classId === null && teacherClasses.length > 0" class="class-legend">
+          <div class="legend-title">班级颜色图例：</div>
+          <div class="legend-items">
+            <div 
+              v-for="clazz in teacherClasses" 
+              :key="clazz.id"
+              class="legend-item">
+              <div 
+                class="legend-color" 
+                :style="{ backgroundColor: getClassColor(clazz.id) }">
+              </div>
+              <span class="legend-text">{{ clazz.name }}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- 课程表网格 -->
@@ -73,12 +104,21 @@
               :key="`${timeSlot.timeSlot}-${day.value}`"
               class="course-cell"
               :class="{ 
-                'has-course': getCellCourse(timeSlot.timeSlot, day.value)
+                'has-course': filterForm.classId ? getCellCourse(timeSlot.timeSlot, day.value) : getCellCourses(timeSlot.timeSlot, day.value).length > 0,
+                'has-other-class': filterForm.classId && hasOtherClassCourse(timeSlot.timeSlot, day.value),
+                'disabled': filterForm.classId && hasOtherClassCourse(timeSlot.timeSlot, day.value),
+                'drag-over': isDragging
               }"
-              @click="handleCellClick(timeSlot.timeSlot, day.value)">
+              @click="handleCellClick(timeSlot.timeSlot, day.value)"
+              @dragover.prevent="handleDragOver"
+              @drop="handleDrop($event, timeSlot.timeSlot, day.value)">
               
-              <!-- 有课程时显示 -->
-              <div v-if="getCellCourse(timeSlot.timeSlot, day.value)" class="course-content">
+              <!-- 选择特定班级时显示单个课程 -->
+              <div v-if="filterForm.classId && getCellCourse(timeSlot.timeSlot, day.value)" 
+                   class="course-content"
+                   :draggable="getCellCourse(timeSlot.timeSlot, day.value).classId === filterForm.classId"
+                   @dragstart="handleDragStart($event, getCellCourse(timeSlot.timeSlot, day.value))"
+                   @dragend="handleDragEnd">
                 <div class="course-name">{{ getCellCourse(timeSlot.timeSlot, day.value).courseName }}</div>
                 <div class="course-time">{{ getDetailedTimeDisplay(timeSlot.timeSlot) }}</div>
                 <div class="course-teacher">{{ getCellCourse(timeSlot.timeSlot, day.value).teacherName }}</div>
@@ -91,11 +131,54 @@
                     <el-icon><Delete /></el-icon>
                   </el-button>
                 </div>
+                <div v-if="getCellCourse(timeSlot.timeSlot, day.value).classId === filterForm.classId" class="drag-handle">⋮⋮</div>
+              </div>
+
+              <!-- 选择特定班级时，显示其他班级的课程（淡化显示） -->
+              <div v-else-if="filterForm.classId && hasOtherClassCourse(timeSlot.timeSlot, day.value)" class="other-class-content">
+                <div 
+                  v-for="course in getOtherClassCourses(timeSlot.timeSlot, day.value)" 
+                  :key="course.id"
+                  class="other-course-item"
+                  :style="{ backgroundColor: getClassColor(course.classId) }">
+                  <div class="course-name">{{ course.courseName }}</div>
+                  <div class="course-class">{{ course.className }}</div>
+                  <div class="course-teacher">{{ course.teacherName }}</div>
+                </div>
+                <div class="disabled-overlay">
+                  <div class="disabled-text">时间冲突</div>
+                </div>
+              </div>
+
+              <!-- 选择所有班级时显示多个课程 -->
+              <div v-else-if="!filterForm.classId && getCellCourses(timeSlot.timeSlot, day.value).length > 0" class="multiple-courses">
+                <div 
+                  v-for="course in getCellCourses(timeSlot.timeSlot, day.value)" 
+                  :key="course.id"
+                  class="course-item"
+                  :style="{ backgroundColor: getClassColor(course.classId) }"
+                  draggable="true"
+                  @dragstart="handleDragStart($event, course)"
+                  @dragend="handleDragEnd"
+                  @click.stop="editCourse(course)">
+                  <div class="course-name">{{ course.courseName }}</div>
+                  <div class="course-class">{{ course.className }}</div>
+                  <div class="course-actions">
+                    <el-button type="text" size="small" @click.stop="editCourse(course)">
+                      <el-icon><Edit /></el-icon>
+                    </el-button>
+                    <el-button type="text" size="small" @click.stop="removeCourse(course)">
+                      <el-icon><Delete /></el-icon>
+                    </el-button>
+                  </div>
+                  <div class="drag-handle">⋮⋮</div>
+                </div>
               </div>
 
               <!-- 无课程时显示 -->
               <div v-else class="empty-content">
                 <div class="add-hint">点击添加课程</div>
+                <div v-if="isDragging" class="drop-hint">拖拽到此处</div>
               </div>
             </div>
           </div>
@@ -247,9 +330,16 @@
 <script>
 import scheduleApi from '../../api/schedule'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Edit, Delete } from '@element-plus/icons-vue'
+import draggable from 'vuedraggable'
 
 export default {
   name: 'ScheduleManagement',
+  components: {
+    Edit,
+    Delete,
+    draggable
+  },
   data() {
     return {
       showQuickAdd: false,
@@ -257,6 +347,7 @@ export default {
       showAddDialog: false,
       quickAddLoading: false,
       addLoading: false,
+      pageLoading: true, // 页面加载状态
       filterForm: {
         academicYear: '2024-2025',
         weekNumber: null,
@@ -305,15 +396,130 @@ export default {
       timeSlots: [],
       scheduleData: {},
       availableCourses: [],
-      teacherClasses: []
+      teacherClasses: [],
+      // 班级颜色映射
+      classColors: [
+        '#e3f2fd', // 浅蓝色
+        '#f3e5f5', // 浅紫色
+        '#e8f5e8', // 浅绿色
+        '#fff3e0', // 浅橙色
+        '#fce4ec', // 浅粉色
+        '#e0f2f1', // 浅青色
+        '#f9fbe7', // 浅黄绿色
+        '#fff8e1', // 浅黄色
+        '#f1f8e9', // 浅草绿色
+        '#e8eaf6'  // 浅靛蓝色
+      ],
+      classColorMap: {}, // 班级ID到颜色的映射
+      // 拖拽相关
+      dragOptions: {
+        animation: 200,
+        group: 'schedule',
+        disabled: false,
+        ghostClass: 'ghost'
+      },
+      isDragging: false,
+      draggedCourse: null
     }
   },
   created() {
-    this.loadTimeSlots()
-    this.loadTeacherClasses()
-    this.loadAvailableCourses()
+    this.initializeData()
+  },
+  beforeUnmount() {
+    // 页面销毁前保存当前查看位置
+    this.saveViewPosition()
   },
   methods: {
+    // 初始化数据
+    async initializeData() {
+      try {
+        this.pageLoading = true
+        
+        // 恢复上次查看的位置
+        this.restoreViewPosition()
+        
+        // 加载基础数据
+        await Promise.all([
+          this.loadTimeSlots(),
+          this.loadTeacherClasses(),
+          this.loadAvailableCourses()
+        ])
+        
+        // 如果没有设置周次，默认设置为当前周
+        if (!this.filterForm.weekNumber) {
+          this.filterForm.weekNumber = this.getCurrentWeek()
+        }
+        
+        // 自动加载课程表数据
+        await this.loadSchedule()
+      } catch (error) {
+        console.error('初始化数据失败:', error)
+        ElMessage.error('加载数据失败，请刷新页面重试')
+      } finally {
+        this.pageLoading = false
+      }
+    },
+
+    // 获取当前周次（可以根据实际需求调整逻辑）
+    getCurrentWeek() {
+      // 这里可以根据当前日期计算当前是第几周
+      // 假设学期开始时间为9月1日，可以根据实际情况调整
+      const now = new Date()
+      const currentYear = now.getFullYear()
+      const currentMonth = now.getMonth() + 1 // 月份从0开始，需要+1
+      
+      // 简单的学期周次计算逻辑
+      // 如果是9月到次年1月，按秋季学期计算
+      // 如果是2月到7月，按春季学期计算
+      let semesterStart
+      if (currentMonth >= 9 || currentMonth <= 1) {
+        // 秋季学期：9月第一周为第1周
+        semesterStart = new Date(currentMonth >= 9 ? currentYear : currentYear - 1, 8, 1) // 9月1日
+      } else {
+        // 春季学期：2月第一周为第1周
+        semesterStart = new Date(currentYear, 1, 1) // 2月1日
+      }
+      
+      // 计算周差
+      const timeDiff = now.getTime() - semesterStart.getTime()
+      const weekDiff = Math.floor(timeDiff / (7 * 24 * 60 * 60 * 1000)) + 1
+      
+      // 限制在1-20周范围内
+      const week = Math.max(1, Math.min(20, weekDiff))
+      
+      return week
+    },
+
+    // 保存当前查看位置到本地存储
+    saveViewPosition() {
+      const viewPosition = {
+        academicYear: this.filterForm.academicYear,
+        weekNumber: this.filterForm.weekNumber,
+        classId: this.filterForm.classId,
+        timestamp: Date.now()
+      }
+      localStorage.setItem('scheduleViewPosition', JSON.stringify(viewPosition))
+    },
+
+    // 恢复上次查看的位置
+    restoreViewPosition() {
+      try {
+        const saved = localStorage.getItem('scheduleViewPosition')
+        if (saved) {
+          const viewPosition = JSON.parse(saved)
+          // 检查保存的数据是否在24小时内（可选）
+          const isRecent = Date.now() - viewPosition.timestamp < 24 * 60 * 60 * 1000
+          if (isRecent) {
+            this.filterForm.academicYear = viewPosition.academicYear || '2024-2025'
+            this.filterForm.weekNumber = viewPosition.weekNumber
+            this.filterForm.classId = viewPosition.classId
+          }
+        }
+      } catch (error) {
+        console.error('恢复查看位置失败:', error)
+      }
+    },
+
     async loadTimeSlots() {
       try {
         const response = await scheduleApi.getAllTimeSlots()
@@ -331,11 +537,26 @@ export default {
         if (response.code === 200) {
           this.teacherClasses = response.data || []
           console.log('教师班级列表:', this.teacherClasses)
+          // 为每个班级分配颜色
+          this.assignClassColors()
         }
       } catch (error) {
         console.error('获取教师班级失败:', error)
         ElMessage.error('获取班级列表失败')
       }
+    },
+
+    // 为班级分配颜色
+    assignClassColors() {
+      this.classColorMap = {}
+      this.teacherClasses.forEach((clazz, index) => {
+        this.classColorMap[clazz.id] = this.classColors[index % this.classColors.length]
+      })
+    },
+
+    // 获取班级对应的颜色
+    getClassColor(classId) {
+      return this.classColorMap[classId] || '#e3f2fd'
     },
 
     async loadAvailableCourses(classId = null) {
@@ -361,14 +582,31 @@ export default {
       if (!this.filterForm.weekNumber) return
       
       try {
-        const response = await scheduleApi.getWeeklyScheduleByClass(
-          this.filterForm.academicYear, 
-          this.filterForm.weekNumber,
-          this.filterForm.classId
-        )
-        if (response.code === 200) {
-          this.scheduleData = response.data || {}
+        // 当选择特定班级时，需要先加载所有班级的数据以显示其他班级的课程
+        if (this.filterForm.classId) {
+          // 先加载所有班级的课程数据
+          const allResponse = await scheduleApi.getWeeklyScheduleByClass(
+            this.filterForm.academicYear, 
+            this.filterForm.weekNumber,
+            null // 获取所有班级
+          )
+          if (allResponse.code === 200) {
+            this.scheduleData = allResponse.data || {}
+          }
+        } else {
+          // 选择所有班级时，直接加载所有数据
+          const response = await scheduleApi.getWeeklyScheduleByClass(
+            this.filterForm.academicYear, 
+            this.filterForm.weekNumber,
+            this.filterForm.classId
+          )
+          if (response.code === 200) {
+            this.scheduleData = response.data || {}
+          }
         }
+        
+        // 加载完成后保存当前查看位置
+        this.saveViewPosition()
       } catch (error) {
         console.error('获取课程表失败:', error)
         ElMessage.error('获取课程表失败')
@@ -381,26 +619,72 @@ export default {
       return daySchedules.find(s => s.timeSlot === timeSlot)
     },
 
-    handleCellClick(timeSlot, dayOfWeek) {
+    // 获取某个时间段的所有课程（用于显示所有班级时）
+    getCellCourses(timeSlot, dayOfWeek) {
+      const dayName = this.weekDays.find(d => d.value === dayOfWeek)?.label
+      const daySchedules = this.scheduleData[dayName] || []
+      return daySchedules.filter(s => s.timeSlot === timeSlot)
+    },
+
+    // 检查是否有其他班级的课程
+    hasOtherClassCourse(timeSlot, dayOfWeek) {
+      if (!this.filterForm.classId) return false
+      const dayName = this.weekDays.find(d => d.value === dayOfWeek)?.label
+      const daySchedules = this.scheduleData[dayName] || []
+      const otherClassCourses = daySchedules.filter(s => s.timeSlot === timeSlot && s.classId !== this.filterForm.classId)
+      return otherClassCourses.length > 0
+    },
+
+    // 获取其他班级的课程
+    getOtherClassCourses(timeSlot, dayOfWeek) {
+      if (!this.filterForm.classId) return []
+      const dayName = this.weekDays.find(d => d.value === dayOfWeek)?.label
+      const daySchedules = this.scheduleData[dayName] || []
+      return daySchedules.filter(s => s.timeSlot === timeSlot && s.classId !== this.filterForm.classId)
+    },
+
+    async handleCellClick(timeSlot, dayOfWeek) {
       if (this.teacherClasses.length === 0) {
         ElMessage.warning('您还没有分配到任何班级，无法添加课程')
         return
       }
       
-      const existingCourse = this.getCellCourse(timeSlot, dayOfWeek)
-      if (existingCourse) {
-        this.editCourse(existingCourse)
-      } else {
-        this.addForm.dayOfWeek = dayOfWeek
-        this.addForm.timeSlot = timeSlot
-        this.addForm.courseId = null
-        this.addForm.classId = this.filterForm.classId || null
-        this.showAddDialog = true
-        
-        // 当打开添加对话框时，如果已选择班级，则加载该班级的可用课程
-        if (this.addForm.classId) {
-          this.loadAvailableCourses(this.addForm.classId)
+      // 检查该时间段是否已有课程
+      if (this.filterForm.classId === null) {
+        // 选择所有班级时，检查是否有任何班级在该时间段有课程
+        const existingCourses = this.getCellCourses(timeSlot, dayOfWeek)
+        if (existingCourses.length > 0) {
+          ElMessage.warning('该时间段已有课程安排，无法添加新课程')
+          return
         }
+        // 选择所有班级时，打开添加对话框但不预选班级，强制用户选择
+        this.addForm.classId = null
+      } else {
+        // 选择特定班级时，首先检查是否有其他班级的课程
+        if (this.hasOtherClassCourse(timeSlot, dayOfWeek)) {
+          ElMessage.warning('该时间段已有其他班级的课程，无法添加')
+          return
+        }
+        
+        // 检查该班级是否有课程
+        const existingCourse = this.getCellCourse(timeSlot, dayOfWeek)
+        if (existingCourse) {
+          this.editCourse(existingCourse)
+          return
+        }
+        // 预选当前筛选的班级
+        this.addForm.classId = this.filterForm.classId
+      }
+      
+      // 打开添加课程对话框
+      this.addForm.dayOfWeek = dayOfWeek
+      this.addForm.timeSlot = timeSlot
+      this.addForm.courseId = null
+      this.showAddDialog = true
+      
+      // 当打开添加对话框时，如果已选择班级，则加载该班级的可用课程
+      if (this.addForm.classId) {
+        this.loadAvailableCourses(this.addForm.classId)
       }
     },
 
@@ -409,6 +693,20 @@ export default {
       
       try {
         await this.$refs.addFormRef.validate()
+        
+        // 在添加前再次检查冲突
+        const conflictResponse = await scheduleApi.checkTimeConflict(
+          this.filterForm.academicYear,
+          this.filterForm.weekNumber,
+          this.addForm.dayOfWeek,
+          this.addForm.timeSlot,
+          this.addForm.classId
+        )
+        
+        if (conflictResponse.code === 200 && conflictResponse.data === true) {
+          ElMessage.error('该时间段已有课程安排，无法添加')
+          return
+        }
         
         this.addLoading = true
         
@@ -460,7 +758,20 @@ export default {
         const selectedClass = this.teacherClasses.find(c => c.id === this.quickAddForm.classId)
         const selectedCourse = this.availableCourses.find(c => c.value === this.quickAddForm.courseId)
         
-        const promises = this.quickAddForm.weekNumbers.map(weekNumber => {
+        const promises = this.quickAddForm.weekNumbers.map(async weekNumber => {
+          // 检查每个周次的冲突
+          const conflictResponse = await scheduleApi.checkTimeConflict(
+            this.filterForm.academicYear,
+            weekNumber,
+            this.quickAddForm.dayOfWeek,
+            this.quickAddForm.timeSlot,
+            this.quickAddForm.classId
+          )
+          
+          if (conflictResponse.code === 200 && conflictResponse.data === true) {
+            throw new Error(`第${weekNumber}周该时间段已有课程安排`)
+          }
+          
           const data = {
             courseId: this.quickAddForm.courseId,
             courseName: selectedCourse?.courseName || '',
@@ -579,6 +890,129 @@ export default {
     getTimeSlotDisplay(timeSlot) {
       const slot = this.timeSlots.find(s => s.timeSlot === timeSlot)
       return slot ? `第${timeSlot}节 ${slot.startTime}-${slot.endTime}` : `第${timeSlot}节`
+    },
+
+    onFilterChange() {
+      // 筛选条件改变时，重新加载课程表并保存位置
+      this.loadSchedule()
+    },
+
+    getSelectedClassName() {
+      const selectedClass = this.teacherClasses.find(c => c.id === this.filterForm.classId)
+      return selectedClass ? selectedClass.name : '所有班级'
+    },
+
+    handleDragStart(event, course) {
+      // 如果选择了特定班级，只允许拖拽当前班级的课程
+      if (this.filterForm.classId && course.classId !== this.filterForm.classId) {
+        event.preventDefault()
+        ElMessage.warning('只能拖拽当前班级的课程')
+        return
+      }
+      
+      this.isDragging = true
+      this.draggedCourse = course
+      event.dataTransfer.setData('text/plain', JSON.stringify(course))
+      event.dataTransfer.effectAllowed = 'move'
+      
+      // 添加拖拽样式
+      event.target.classList.add('dragging')
+    },
+
+    handleDragEnd(event) {
+      this.isDragging = false
+      this.draggedCourse = null
+      
+      // 移除拖拽样式
+      event.target.classList.remove('dragging')
+    },
+
+    handleDragOver(event) {
+      event.preventDefault()
+      event.dataTransfer.dropEffect = 'move'
+    },
+
+    async handleDrop(event, timeSlot, dayOfWeek) {
+      event.preventDefault()
+      
+      if (!this.draggedCourse) return
+      
+      const course = this.draggedCourse
+      
+      // 检查是否拖拽到相同位置
+      if (course.timeSlot === timeSlot && course.dayOfWeek === dayOfWeek) {
+        this.isDragging = false
+        this.draggedCourse = null
+        return
+      }
+      
+      try {
+        // 检查目标位置是否有冲突
+        const hasConflict = await this.checkDropConflict(timeSlot, dayOfWeek, course)
+        if (hasConflict) {
+          ElMessage.warning('目标时间段已有课程，无法移动')
+          this.isDragging = false
+          this.draggedCourse = null
+          return
+        }
+        
+        // 执行课程移动
+        await this.moveCourse(course, timeSlot, dayOfWeek)
+        
+        ElMessage.success('课程移动成功')
+        
+        // 重新加载课程表
+        await this.loadSchedule()
+        
+      } catch (error) {
+        console.error('移动课程失败:', error)
+        ElMessage.error(error.message || '移动课程失败')
+      } finally {
+        this.isDragging = false
+        this.draggedCourse = null
+      }
+    },
+
+    async checkDropConflict(timeSlot, dayOfWeek, draggedCourse) {
+      try {
+        // 检查目标位置是否有其他课程
+        const response = await scheduleApi.checkTimeConflict(
+          this.filterForm.academicYear,
+          this.filterForm.weekNumber,
+          dayOfWeek,
+          timeSlot,
+          draggedCourse.classId
+        )
+        
+        return response.code === 200 && response.data === true
+      } catch (error) {
+        console.error('检查冲突失败:', error)
+        return true // 出错时认为有冲突，保险起见
+      }
+    },
+
+    async moveCourse(course, newTimeSlot, newDayOfWeek) {
+      try {
+        // 调用后端API更新课程时间
+        const updateData = {
+          academicYear: course.academicYear,
+          weekNumber: course.weekNumber,
+          dayOfWeek: newDayOfWeek,
+          timeSlot: newTimeSlot,
+          classId: course.classId,
+          className: course.className
+        }
+        
+        const response = await scheduleApi.updateSchedule(course.id, updateData)
+        
+        if (response.code !== 200) {
+          throw new Error(response.message || '更新课程失败')
+        }
+        
+        return response
+      } catch (error) {
+        throw error
+      }
     }
   }
 }
@@ -589,10 +1023,23 @@ export default {
   padding: 20px;
 }
 
+.loading-container {
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-info {
+  font-size: 14px;
+  color: #666;
+  font-weight: normal;
 }
 
 .filter-section {
@@ -679,11 +1126,74 @@ export default {
   background-color: #e3f2fd;
 }
 
+.course-cell.has-other-class {
+  background-color: #f5f5f5;
+  opacity: 0.7;
+}
+
+.course-cell.disabled {
+  cursor: not-allowed;
+  position: relative;
+}
+
+.course-cell.disabled:hover {
+  background-color: #f5f5f5 !important;
+}
+
+.course-cell.drag-over {
+  background-color: #e8f5e8 !important;
+  border: 2px dashed #67c23a;
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(103, 194, 58, 0.3);
+}
+
 .course-content {
   height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  position: relative;
+  cursor: move;
+  transition: all 0.3s ease;
+  border-radius: 6px;
+}
+
+.course-content[draggable="false"] {
+  cursor: default;
+  opacity: 0.8;
+}
+
+.course-content:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.course-content[draggable="false"]:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.course-content.dragging {
+  opacity: 0.7;
+  transform: rotate(5deg) scale(1.05);
+  z-index: 1000;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.drag-handle {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  color: #c0c4cc;
+  font-size: 12px;
+  cursor: move;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.course-content:hover .drag-handle,
+.course-item:hover .drag-handle {
+  opacity: 1;
 }
 
 .course-name {
@@ -739,5 +1249,176 @@ export default {
   .schedule-grid {
     min-width: 1000px;
   }
+}
+
+.multiple-courses {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+}
+
+.course-item {
+  border-radius: 4px;
+  padding: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  cursor: move;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.course-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.course-item.dragging {
+  opacity: 0.7;
+  transform: rotate(3deg) scale(1.05);
+  z-index: 1000;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.course-item .course-name {
+  font-weight: bold;
+  color: #1976d2;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.course-item .course-class {
+  font-size: 10px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.course-item .course-actions {
+  display: flex;
+  gap: 2px;
+  justify-content: flex-end;
+}
+
+.course-item .course-actions .el-button {
+  padding: 2px;
+  min-height: auto;
+}
+
+.class-legend {
+  margin-top: 15px;
+  padding: 15px;
+  background: #f0f2f5;
+  border-radius: 6px;
+  border: 1px solid #e4e7ed;
+}
+
+.legend-title {
+  font-weight: bold;
+  color: #303133;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.legend-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  padding: 5px 10px;
+  background: white;
+  border-radius: 4px;
+  border: 1px solid #e4e7ed;
+}
+
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  margin-right: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.legend-text {
+  font-size: 13px;
+  color: #606266;
+  font-weight: 500;
+}
+
+.other-class-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+  position: relative;
+}
+
+.other-course-item {
+  border-radius: 4px;
+  padding: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.other-course-item .course-name {
+  font-weight: bold;
+  color: #1976d2;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.other-course-item .course-class {
+  font-size: 10px;
+  color: #666;
+  margin-bottom: 2px;
+}
+
+.other-course-item .course-teacher {
+  font-size: 10px;
+  color: #666;
+}
+
+.disabled-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(1px);
+}
+
+.disabled-text {
+  font-size: 12px;
+  color: #909399;
+  font-weight: 500;
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #e4e7ed;
+}
+
+.drop-hint {
+  text-align: center;
+  color: #67c23a;
+  font-size: 12px;
+  margin-top: 4px;
+  font-weight: 500;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 0.6; transform: scale(1); }
 }
 </style> 
