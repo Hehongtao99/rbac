@@ -1,8 +1,3 @@
--- 创建数据库
-CREATE DATABASE IF NOT EXISTS rbac_system DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
-USE rbac_system;
-
 -- 创建用户表
 CREATE TABLE sys_user (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '用户ID',
